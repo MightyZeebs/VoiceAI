@@ -16,7 +16,7 @@ openai.Model.retrieve("text-davinci-002")
 audio_buffer = queue.Queue()
     # Create a thread-safe buffer to store audio data
 
-conversation_history = []
+memory_history = []
 
 def create_connection():
     #create a connection to the SQLite database
@@ -49,39 +49,51 @@ def insert_message(conn, timestamp, speaker, text):
     #insert a message into the conversation history table
     try:
         c = conn.cursor()
-        c.execute(f"INSERT INTO conversation_history (timestamp, speaker, text) VALUES (?, ?, ?)",
-                  (timestamp, speaker, text))
+        c.execute("INSERT INTO conversation_history (timestamp, speaker, text) VALUES (?, ?, ?)", (timestamp, speaker, text))
         conn.commit()
         print('Successfully inserted message into conversation history.')
     except sqlite3.Error as e:
         print(e)
+
     
-def retrieve_conversation_history(conn, minutes=5):
+def retrieve_database_history(conn, minutes=5):
     #retrieve the conversation history from the database
     current_time = datetime.datetime.now()
     time_threshold = current_time - datetime.timedelta(minutes=minutes)
     try:
         c = conn.cursor()
-        c.execute("SELECT * FROM conversation_history WHERE timestamp >= ?", (time_threshold))
+        c.execute("SELECT * FROM conversation_history WHERE timestamp >= ?", (time_threshold,))
         rows = c.fetchall()
-        return rows if rows else [] # return an empty list if rows is empty
+        return [(datetime.datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S.%f"
+), row[2], row[3]) for row in rows] if rows else [] #return an empty list if rows are empty
     except sqlite3.Error as e:
         print(e)
-        
+        return []
+
+def retrieve_memory_history(conversation_history, minutes=5):
+    current_time = datetime.datetime.now()
+    time_threshold = current_time - datetime.timedelta(minutes=minutes)
+    memory_history = [item for item in conversation_history if item[0] >= time_threshold]
+    return memory_history
+
 def callback(indata, frames, time, status):
     # Define a callback function to handle audio data
     if status:
         print(status, file=sys.stderr)
     audio_buffer.put((indata.copy() * np.iinfo(np.int16).max).astype(np.int16))
 
+conversation_history = []
+
 def handle_question(question, conversation_history, conn):
     #Define how to the AI handles questions and understands previous context
     current_time = datetime.datetime.now()
     insert_message(conn, current_time, "user", question)
-
-    if not conversation_history:
-        conversation_history = retrieve_conversation_history(conn, 5)
     
+    if memory_history:
+        conversation_history = retrieve_memory_history(memory_history, 5)
+    else:
+        conversation_history = retrieve_database_history(conn, 5)
+
     filtered_history = [
         entry for entry in conversation_history
         if (current_time - entry[0]) <= datetime.timedelta(minutes=5)
@@ -96,11 +108,11 @@ def handle_question(question, conversation_history, conn):
     if any(phrase in question.lower() for phrase in follow_up_phrases) or len(filtered_history) >= 2:
             #use the previous question as context
             context = filtered_history[-2][-1]
-            prompt = f"{context}\nAssistant:"
+            prompt = f"{context}\nUser: {question}\nAssistant:"
     else:
         #Use entire conversation history as context
         history_str = "\n".join(entry[1] for entry in filtered_history)
-        prompt = f"{history_str}\nAssistant:"
+        prompt = f"{history_str}\nUser: {question}\nAssistant:"
 
     response = openai.Completion.create(
         engine="text-davinci-002",
@@ -137,19 +149,22 @@ def record_and_transcribe(conn, duration):
         interim_results=False #only get the final results
     )
 
-    def get_microphone_index():
-        #get the microphone index
-        devices = sd.query_devices()
-        for i, device in enumerate(devices):
-            if device['name'] == "Microphone (Voicemod Virtual Audio Device (WDM))":
-                return i
-        return None
+    device_index = None
+        #tells the program to use the default microphone instead of specifying
+
+    # def get_microphone_index():
+    #     #get the microphone index
+    #     devices = sd.query_devices()
+    #     for i, device in enumerate(devices):
+    #         if device['name'] == "Microphone (Voicemod Virtual Audio Device (WDM))":
+    #             return i
+    #     return None
         
-    device_index = get_microphone_index()
-    if device_index is None:
-        print("Default microphone not found.")
-    else:
-        print(f"Using default microphone (index {device_index}).")
+    # device_index = get_microphone_index()
+    # if device_index is None:
+    #     print("Default microphone not found.")
+    # else:
+    #     print(f"Using default microphone (index {device_index}).")
 
     def audio_generator():
         # Create a generator that yields audio chunks
