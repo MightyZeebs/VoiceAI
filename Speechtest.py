@@ -51,7 +51,6 @@ def insert_message(conn, timestamp, speaker, text):
         c = conn.cursor()
         c.execute("INSERT INTO conversation_history (timestamp, speaker, text) VALUES (?, ?, ?)", (timestamp, speaker, text))
         conn.commit()
-        print('Successfully inserted message into conversation history.')
     except sqlite3.Error as e:
         print(e)
 
@@ -93,26 +92,22 @@ def handle_question(question, conversation_history, conn):
         conversation_history = retrieve_memory_history(memory_history, 5)
     else:
         conversation_history = retrieve_database_history(conn, 5)
+            #if there is conversation in memory it will use it otherwise pulls from the database
 
     filtered_history = [
         entry for entry in conversation_history
         if (current_time - entry[0]) <= datetime.timedelta(minutes=5)
     ]
 
-    if len(filtered_history) < 2 or len(filtered_history[-2][1]) < 2:
-        context = ""
-    else:
-        context = filtered_history[-2][-1]
+    history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in filtered_history)
 
     follow_up_phrases = ["also", "follow up", "continue about", "continue with"]
     if any(phrase in question.lower() for phrase in follow_up_phrases) or len(filtered_history) >= 2:
-            #use the previous question as context
-            context = filtered_history[-2][-1]
-            prompt = f"{context}\nUser: {question}\nAssistant:"
+                #use the entire conversation history as context
+                prompt = f"{history_str}\nUser: {question}\nAssistant:"
     else:
-        #Use entire conversation history as context
-        history_str = "\n".join(entry[1] for entry in filtered_history)
-        prompt = f"{history_str}\nUser: {question}\nAssistant:"
+        #Use only the current question as context
+        prompt = f"User: {question}\nAssistant:"
 
     response = openai.Completion.create(
         engine="text-davinci-002",
@@ -126,8 +121,6 @@ def handle_question(question, conversation_history, conn):
     answer = response.choices[0].text.strip()
     conversation_history.append((current_time, "Assistant: " + answer))
     return answer
-
-print("Conversation history:", conversation_history)
 
 def record_and_transcribe(conn, duration):
     # The record_and_transcribe function takes a duration (in seconds)
@@ -151,20 +144,6 @@ def record_and_transcribe(conn, duration):
 
     device_index = None
         #tells the program to use the default microphone instead of specifying
-
-    # def get_microphone_index():
-    #     #get the microphone index
-    #     devices = sd.query_devices()
-    #     for i, device in enumerate(devices):
-    #         if device['name'] == "Microphone (Voicemod Virtual Audio Device (WDM))":
-    #             return i
-    #     return None
-        
-    # device_index = get_microphone_index()
-    # if device_index is None:
-    #     print("Default microphone not found.")
-    # else:
-    #     print(f"Using default microphone (index {device_index}).")
 
     def audio_generator():
         # Create a generator that yields audio chunks
