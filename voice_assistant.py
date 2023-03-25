@@ -10,7 +10,9 @@ import openai
 import sqlite3
 import datetime
 import tempfile
-from playsound import playsound
+import pygame
+import keyboard
+import threading
 from google.cloud import speech # Import the Google Cloud client library
 from google.cloud import texttospeech
 
@@ -151,16 +153,43 @@ def sythesize_speech(text):
     return temp_file_path
 
 def play_speech(audio_file_path):
-    #play the audio
-  playsound(audio_file_path)
-  os.remove(audio_file_path) #deletes the temp file after playing it
+    # Set environment variable to hide the pygame support prompt
+    os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
+    
+    # Initialize pygame
+    pygame.init()
+    pygame.mixer.init()
 
+    # Load the audio file
+    pygame.mixer.music.load(audio_file_path)
 
-def record_and_transcribe(conn, duration):
+    # Event to detect when audio is finished
+    pygame.mixer.music.set_endevent(pygame.USEREVENT)
+
+    # Play the audio file
+    pygame.mixer.music.play()
+
+    # Wait for the audio to finish playing and then delete the audio file
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.USEREVENT:
+                pygame.mixer.music.stop()
+                while True:
+                    try:
+                        os.remove(audio_file_path)
+                        break
+                    except PermissionError:
+                        time.sleep(0.1)
+                return
+        pygame.time.Clock().tick(10)
+
+def record_and_transcribe(conn):
     # The record_and_transcribe function takes a duration (in seconds)
     # It records audio input from the user for the specified duration, transcribes it using Google Cloud Speech-to-Text,
     # and passes the transcribed text to OpenAI API for generating a response based on the conversation history.
   
+    global listening
+
     client = speech.SpeechClient()
       # Create a Google Cloud Speech-to-Text client to handle speech recognition
 
@@ -180,26 +209,27 @@ def record_and_transcribe(conn, duration):
         #tells the program to use the default microphone instead of specifying
 
     def audio_generator():
-        # Create a generator that yields audio chunks
+        global listening
+
         stream = sd.InputStream(device=device_index, samplerate=16000, channels=1, blocksize=1024, callback=callback, dtype=np.float32)
-        stream.start()
-        print("Recording started...")
 
-        start_time = time.time()
-
-        try:
-            while time.time() - start_time < duration:
-                try:
-                    data = audio_buffer.get(timeout=1)
-                    #print("Data length:", len(data))
-                    audio_request = speech.RecognitionAudio(content=data.tobytes())
-                    yield speech.StreamingRecognizeRequest(audio_content=audio_request.content)
-                except queue.Empty:
-                    pass
-        finally:
+        if listening:
+            stream.start()
+            print("Recording started...")
+        else:
             stream.stop()
-            stream.close()            
-            print("Recording finished...")
+            print("Recording stopped...")
+            return
+
+        while listening:
+            try:
+                data = audio_buffer.get(timeout=1)
+                audio_request = speech.RecognitionAudio(content=data.tobytes())
+                yield speech.StreamingRecognizeRequest(audio_content=audio_request.content)
+            except queue.Empty:
+                pass
+
+        stream.close()
 
     requests = audio_generator()
     responses = client.streaming_recognize(streaming_config, requests=requests)
@@ -230,7 +260,18 @@ def record_and_transcribe(conn, duration):
                 conversation_history.append((Current_time, "assistant: " + answer))
                     #update assistant with previous questions
                 
-record_and_transcribe(conn, duration=10)
- # Record for 10 seconds
 
+listening = False
 
+def toggle_voice_assistant():
+    global listening
+    listening = not listening
+
+    if listening:
+        print("Voice assistant activated")
+        threading.Thread(target=record_and_transcribe, args=(conn,)).start()
+    else:
+        print("Voice assistant deactivated")
+
+keyboard.add_hotkey('ctrl+alt+a', toggle_voice_assistant)
+keyboard.wait()
