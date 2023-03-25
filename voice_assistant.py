@@ -1,4 +1,5 @@
 import io
+import os
 import queue
 import sounddevice as sd
 import sys
@@ -8,7 +9,10 @@ import soundfile as sf
 import openai
 import sqlite3
 import datetime
+import tempfile
+from playsound import playsound
 from google.cloud import speech # Import the Google Cloud client library
+from google.cloud import texttospeech
 
 openai.api_key = "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"
 openai.Model.retrieve("text-davinci-002")
@@ -92,22 +96,22 @@ def handle_question(question, conversation_history, conn):
         conversation_history = retrieve_memory_history(memory_history, 5)
     else:
         conversation_history = retrieve_database_history(conn, 5)
-            #if there is conversation in memory it will use it otherwise pulls from the database
+            #if there is no conversation in memory it will use it otherwise pulls from the database
 
-    filtered_history = [
-        entry for entry in conversation_history
-        if (current_time - entry[0]) <= datetime.timedelta(minutes=5)
-    ]
+    recall_phrase = ["remember when", "recall", "search for"]
+    first_words = " ".join(question.lower().split()[:3])
+    if any(first_words.startswith(phrase) for phrase in recall_phrase):
+        filtered_history = conversation_history #use entire conversation history as context
+    else:
+        #use only the last 5 minutes of conversation as context
+        filtered_history = [
+            entry for entry in conversation_history
+            if (current_time - entry[0]) <= datetime.timedelta(minutes=5)
+        ]
 
     history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in filtered_history)
 
-    follow_up_phrases = ["also", "follow up", "continue about", "continue with"]
-    if any(phrase in question.lower() for phrase in follow_up_phrases) or len(filtered_history) >= 2:
-                #use the entire conversation history as context
-                prompt = f"{history_str}\nUser: {question}\nAssistant:"
-    else:
-        #Use only the current question as context
-        prompt = f"User: {question}\nAssistant:"
+    prompt = f"{history_str}\nUser: {question}\nAssistnat:"
 
     response = openai.Completion.create(
         engine="text-davinci-002",
@@ -121,6 +125,36 @@ def handle_question(question, conversation_history, conn):
     answer = response.choices[0].text.strip()
     conversation_history.append((current_time, "Assistant: " + answer))
     return answer
+
+def sythesize_speech(text):
+    #text to speech using google
+    client = texttospeech.TextToSpeechClient()
+
+    input_text = texttospeech.SynthesisInput(text=text)
+    voice = texttospeech.VoiceSelectionParams(
+        language_code="en-GB",
+        ssml_gender=texttospeech.SsmlVoiceGender.MALE,
+        name="en-GB-Standard-B"
+    )
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3
+    )
+    response = client.synthesize_speech(
+        input=input_text, voice=voice, audio_config=audio_config
+    )
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix= ".mp3") as temp_file:
+        temp_file.write(response.audio_content)
+        temp_file_path = temp_file.name
+            #save the audio content to a temp file
+
+    return temp_file_path
+
+def play_speech(audio_file_path):
+    #play the audio
+  playsound(audio_file_path)
+  os.remove(audio_file_path) #deletes the temp file after playing it
+
 
 def record_and_transcribe(conn, duration):
     # The record_and_transcribe function takes a duration (in seconds)
@@ -166,7 +200,7 @@ def record_and_transcribe(conn, duration):
             stream.stop()
             stream.close()            
             print("Recording finished...")
-        
+
     requests = audio_generator()
     responses = client.streaming_recognize(streaming_config, requests=requests)
 
@@ -185,7 +219,10 @@ def record_and_transcribe(conn, duration):
                 insert_message(conn, str(Current_time), "user", transcript)
 
                 answer = handle_question(transcript, conversation_history, conn)
+                audio_content = sythesize_speech(answer)
                 print("assistant:", answer)
+                play_speech(audio_content)
+                
 
                 Current_time = datetime.datetime.now()
                 insert_message(conn, str(Current_time), "assistant", answer)
