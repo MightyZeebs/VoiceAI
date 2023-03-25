@@ -143,7 +143,7 @@ def sythesize_speech(text):
         input=input_text, voice=voice, audio_config=audio_config
     )
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix= ".mp3") as temp_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
         temp_file.write(response.audio_content)
         temp_file_path = temp_file.name
             #save the audio content to a temp file
