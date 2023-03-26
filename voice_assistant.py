@@ -15,10 +15,6 @@ import keyboard
 import threading
 from google.cloud import speech # Import the Google Cloud client library
 from google.cloud import texttospeech
-
-openai.api_key = "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"
-openai.Model.retrieve("text-davinci-002")
-
 audio_buffer = queue.Queue()
     # Create a thread-safe buffer to store audio data
 
@@ -28,7 +24,7 @@ def create_connection():
     #create a connection to the SQLite database
     conn = None
     try:
-        conn = sqlite3.connect('conversation_history.db')
+        conn = sqlite3.connect('conversation_history.db', check_same_thread=False)
         print(f'Successfully connected to SQLite version {sqlite3.version}')
     except sqlite3.Error as e:
         print(e)
@@ -48,8 +44,10 @@ def create_table(conn):
     except sqlite3.Error as e:
         print(e)
 
-conn = create_connection()
-create_table(conn)
+def initialize_database():
+    conn = create_connection()
+    create_table(conn)
+    return conn
 
 def insert_message(conn, timestamp, speaker, text):
     #insert a message into the conversation history table
@@ -183,95 +181,110 @@ def play_speech(audio_file_path):
                 return
         pygame.time.Clock().tick(10)
 
+stream = None
+device_index = None
+
+
 def record_and_transcribe(conn):
-    # The record_and_transcribe function takes a duration (in seconds)
-    # It records audio input from the user for the specified duration, transcribes it using Google Cloud Speech-to-Text,
-    # and passes the transcribed text to OpenAI API for generating a response based on the conversation history.
-  
     global listening
+    global stream
+    global device_index
 
     client = speech.SpeechClient()
-      # Create a Google Cloud Speech-to-Text client to handle speech recognition
-
     config = speech.RecognitionConfig(
-        # Configure the speech recognition settings
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=16000,
         language_code="en-US"
     )
-  
+
     streaming_config = speech.StreamingRecognitionConfig(
         config=config,
-        interim_results=False #only get the final results
+        interim_results=False
     )
-
-    device_index = None
-        #tells the program to use the default microphone instead of specifying
 
     def audio_generator():
         global listening
+        global device_index
 
-        stream = sd.InputStream(device=device_index, samplerate=16000, channels=1, blocksize=1024, callback=callback, dtype=np.float32)
+        while True:
+            if listening:
+                try:
+                    data = audio_buffer.get(timeout=1)
+                    audio_request = speech.RecognitionAudio(content=data.tobytes())
+                    yield speech.StreamingRecognizeRequest(audio_content=audio_request.content)
+                except queue.Empty:
+                    pass
+            else:
+                break
 
-        if listening:
-            stream.start()
-            print("Recording started...")
-        else:
+    if listening:
+        print("Recording started...")
+
+        with sd.InputStream(device=device_index, samplerate=16000, channels=1, blocksize=1024, callback=callback, dtype=np.float32) as stream:
+            while listening:
+                requests = audio_generator()
+                responses = client.streaming_recognize(streaming_config, requests=requests)
+                response_iterator = iter(responses)
+
+                try:
+                    for response in response_iterator:
+                        if not response.results:
+                            print("No transcription results found.")
+                        else:
+                            result = response.results[-1]
+                            if result.is_final:
+                                transcript = result.alternatives[0].transcript
+                                print("user:", transcript)
+
+                                Current_time = datetime.datetime.now()
+                                insert_message(conn, str(Current_time), "user", transcript)
+
+                                answer = handle_question(transcript, conversation_history, conn)
+                                audio_content = sythesize_speech(answer)
+                                print("assistant:", answer)
+                                play_speech(audio_content)
+
+                                Current_time = datetime.datetime.now()
+                                insert_message(conn, str(Current_time), "assistant", answer)
+                                insert_message(conn, str(Current_time), "user", transcript)
+                                conversation_history.append((Current_time, "assistant: " + answer))
+                except StopIteration:
+                    pass
+                except Exception as e:
+                    print("An error occurred:", e)
+                    break
+    else:
+        if stream is not None and stream.active:
             stream.stop()
             print("Recording stopped...")
-            return
-
-        while listening:
-            try:
-                data = audio_buffer.get(timeout=1)
-                audio_request = speech.RecognitionAudio(content=data.tobytes())
-                yield speech.StreamingRecognizeRequest(audio_content=audio_request.content)
-            except queue.Empty:
-                pass
-
-        stream.close()
-
-    requests = audio_generator()
-    responses = client.streaming_recognize(streaming_config, requests=requests)
-
-    # Process the responses
-    for response in responses:
-        if not response.results:
-            print("No transcription results found.")
-        else:
-            # only print the final result
-            result = response.results[-1]
-            if result.is_final:
-                transcript = result.alternatives[0].transcript
-                print("user:", transcript)
-
-                Current_time = datetime.datetime.now()
-                insert_message(conn, str(Current_time), "user", transcript)
-
-                answer = handle_question(transcript, conversation_history, conn)
-                audio_content = sythesize_speech(answer)
-                print("assistant:", answer)
-                play_speech(audio_content)
-                
-
-                Current_time = datetime.datetime.now()
-                insert_message(conn, str(Current_time), "assistant", answer)
-                insert_message(conn, str(Current_time), "user", transcript)
-                conversation_history.append((Current_time, "assistant: " + answer))
-                    #update assistant with previous questions
                 
 
 listening = False
 
+#include the initialization of the API key, model, and audio recording
 def toggle_voice_assistant():
-    global listening
+    global listening, stream
+
+    if not listening:
+        # Initialize the API key and model when the keybind is hit
+        openai.api_key = "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"
+        openai.Model.retrieve("text-davinci-002")
+
     listening = not listening
 
     if listening:
         print("Voice assistant activated")
+        stream = sd.InputStream(device=device_index, samplerate=16000, channels=1, blocksize=1024, callback=callback, dtype=np.float32)
         threading.Thread(target=record_and_transcribe, args=(conn,)).start()
     else:
+        if stream is not None and stream.active:
+            stream.stop()
+            stream.close()  # Add this line to close the input stream
         print("Voice assistant deactivated")
+
+
+# Initialize the database connection before waiting for the keybind
+conn = initialize_database()
 
 keyboard.add_hotkey('ctrl+alt+a', toggle_voice_assistant)
 keyboard.wait()
