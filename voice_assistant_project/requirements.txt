@@ -1,0 +1,11 @@
+google-cloud-speech
+google-cloud-texttospeech
+sounddevice
+numpy
+soundfile
+openai
+sqlite3
+pygame
+keyboard
+threading
+speech_recognition
