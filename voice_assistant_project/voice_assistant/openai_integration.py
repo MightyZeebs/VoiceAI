@@ -24,14 +24,23 @@ def handle_question(question, conversation_history, memory_history, conn):
 
     #check for date related question
     doc = nlp(question)
-    has_date_entity = any(token.ent_type_ == "DATE" for token in doc)
+    date_detected = False
+    date_keywords = ['date', 'day', 'today', "tomorrow", "yesterday"]
+    for token in doc:
+        if token.lower_ in date_keywords:
+            date_detected = True
 
     #if question has date entity, use get_date_info
-    if has_date_entity:
+    if date_detected:
         print("date related question")
-        date_info = get_date_info(question)
-        if date_info != "Sorry, I dont understand the question.":
-            return date_info
+        try:
+            date_info = get_date_info(question)
+            if date_info:
+                return date_info
+        except Exception as e:
+            print(f"Error in date answer: {e}")
+
+            
     
     recall_phrases = ["remember when", "recall", "search for"]
     first_words = " ".join(question.lower().split()[:3])

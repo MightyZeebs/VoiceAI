@@ -1,7 +1,6 @@
 import datetime
 import dateparser
 import spacy
-import parsedatetime as pdt
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -10,21 +9,18 @@ nlp = spacy.load("en_core_web_sm")
 
 def get_date_info(question):
     today = datetime.date.today()
+    date_keyword = ["today", "date", "day"]
 
     doc = nlp(question)
     date_detected = False
     for token in doc:
-        if token.ent_type_ == "DATE":
-           cal = pdt.Calendar()
-           time_struct, parse_status = cal.parse(token.text, sourceTime=today.timetuple())
-           target_date = datetime.date(time_struct.tm_year, time_struct.tm_mon, time_struct.tm_mday)
+        if token.lower_ in date_keyword:
+           target_date = dateparser.parse(token.text).date()
            date_detected = True
            break
 
     if not date_detected:
-        return "Sorry, I don't understand the question."
-    if parse_status != 0:
-        return "Sorry, I couldn't understand the date expression."
+        return None
 
     if target_date == today:
         return f"Today is {today.strftime('%A, %B %d')}."
@@ -39,6 +35,7 @@ def get_date_info(question):
         return f"{target_date.strftime('%A, %B %d')} is in {target_date.month - today.month} months."
     else:
         return f"{target_date.strftime('%A, %B %d, %Y')} is in {target_date.year - today.year} years."
+    
     
 def get_calendar_service():
     SCOPES = ['https://www.googleapis.com/auth/calendar']

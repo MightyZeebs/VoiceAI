@@ -130,7 +130,7 @@ class VoiceAssistant:
         keyboard.add_hotkey(hotkey, self.toggle)
 
         r = sr.Recognizer()
-        r.energy_threshold = 1000
+        r.energy_threshold = 1500
         microphone = sr.Microphone()
 
         while not self.stop_thread:
