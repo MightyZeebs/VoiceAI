@@ -15,11 +15,14 @@ def get_date_info(question):
     date_detected = False
     for token in doc:
         if token.lower_ in date_keyword:
-           target_date = dateparser.parse(token.text).date()
-           date_detected = True
-           break
+            parsed_date = dateparser.parse(token.text)
+            if parsed_date is not None:
+                target_date = parsed_date.date()
+                date_detected = True
+                break
 
     if not date_detected:
+        print("No Date Info")
         return None
 
     if target_date == today:

@@ -12,7 +12,7 @@ openai.Model.retrieve("gpt-3.5-turbo")
 
 nlp = spacy.load("en_core_web_sm")
 
-def handle_question(question, conversation_history, memory_history, conn):
+def handle_question(question, conversation_history, memory_history, conn, current_time):
     current_time = datetime.datetime.now()
     insert_message(conn, current_time, "user", question)
 
@@ -58,7 +58,7 @@ def handle_question(question, conversation_history, memory_history, conn):
     history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in filtered_history)
     sentiment = analyze_sentiment(question)
     
-    answer = generate_response(question, history_str, sentiment)
+    answer = generate_response(question, history_str, sentiment, current_time)
 
     if not answer.strip():
         answer = "I'm sorry, I couldn't understand your question. Please try again."
@@ -74,7 +74,7 @@ def analyze_sentiment(input_text):
     return sentiment
 
 
-def generate_response(input_text, context, sentiment):
+def generate_response(input_text, context, sentiment, current_time):
     emotion = (
         "sad"
         if sentiment < -0.2
@@ -83,7 +83,9 @@ def generate_response(input_text, context, sentiment):
         else "neutral"
     )
 
-    system_message = f"Generate a response for a {emotion} user.\n{context}\nUser: {input_text}\nAssistant:"
+    current_date_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
+    system_message = f"Generate a response for a {emotion} user. The current date and time is {current_date_time}.\n{context}\nUser: {input_text}\nAssistant:"
+        
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "system", "content": system_message}, {"role": "user", "content": input_text}],
