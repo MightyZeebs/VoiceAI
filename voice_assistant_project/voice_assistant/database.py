@@ -43,19 +43,30 @@ def insert_message(conn, timestamp, speaker, text):
         print(e)
 
     
-def retrieve_database_history(conn, minutes=5):
-    #retrieve the conversation history from the database
-    current_time = datetime.datetime.now()
-    time_threshold = current_time - datetime.timedelta(minutes=minutes)
-    try:
-        c = conn.cursor()
-        c.execute("SELECT * FROM conversation_history WHERE timestamp >= ?", (time_threshold,))
-        rows = c.fetchall()
-        return [(datetime.datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S.%f"
-), row[2], row[3]) for row in rows] if rows else [] #return an empty list if rows are empty
-    except sqlite3.Error as e:
-        print(e)
-        return []
+def retrieve_database_history(conn, recall=False, minutes=5):    
+    if recall:
+        #return ALL conversation history if recall phrase is true
+        try:
+            c = conn.cursor()
+            c.execute("SELECT * FROM conversation_history")
+            rows = c.fetchall()
+            return [(datetime.datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S.%f"
+    ), row[2], row[3]) for row in rows] if rows else [] #return an empty list if rows are empty
+        except sqlite3.Error as e:
+            print(e)
+            return []
+    else:
+        #return default of 5 minutes history
+        current_time = datetime.datetime.now()
+        time_threshold = current_time - datetime.timedelta(minutes=minutes)
+        try:
+            c = conn.cursor()
+            c.execute("SELECT * FROM conversation_history WHERE timestamp >= ?", (time_threshold,))
+            rows = c.fetchall()
+            return [(datetime.datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S.%f"), row[2], row[3]) for row in rows] if rows else [] #return an empty list if rows are empty
+        except sqlite3.Error as e:
+            print(e)
+            return []
 
 def retrieve_memory_history(conversation_history, minutes=5):
     current_time = datetime.datetime.now()

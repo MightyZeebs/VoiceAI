@@ -1,4 +1,6 @@
 from voice_assistant import VoiceAssistant
+from voice_assistant import delete_audio_files
+
 
 def main():
     assistant = VoiceAssistant()
@@ -8,4 +10,5 @@ def main():
     assistant.run()
 
 if __name__ == "__main__":
+    delete_audio_files()
     main()

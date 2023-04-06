@@ -2,8 +2,8 @@ import openai
 import datetime
 from textblob import TextBlob
 import datetime
-import dateparser
 import spacy
+import re
 from .calender_integration import get_calendar_service, get_date_info, create_reminder
 from .database import insert_message, retrieve_database_history, retrieve_memory_history
 
@@ -12,15 +12,36 @@ openai.Model.retrieve("gpt-3.5-turbo")
 
 nlp = spacy.load("en_core_web_sm")
 
+def extract_keywords(text):
+    doc = nlp(text)
+    keywords = [chunk.text for chunk in doc.noun_chunks]
+    return keywords
+
+def search_conversation_history(conversation_history, keywords):
+    results = []
+    for entry in conversation_history:
+        if any(keyword.lower() in entry[2].lower() for keyword in keywords):
+            results.append(entry)
+    return results
+
 def handle_question(question, conversation_history, memory_history, conn, current_time, date_answer):
     current_time = datetime.datetime.now()
     insert_message(conn, current_time, "user", question)
 
-    conversation_history = (
-        retrieve_memory_history(memory_history, 5)
-        if memory_history
-        else retrieve_database_history(conn, 5)
-    )
+    recall_phrases = ["remember when", "recall", "search for"]
+    recall_detected = any(phrase in question.lower() for phrase in recall_phrases)
+    
+    if recall_detected:
+        print("Recall phrase detected")
+        keywords = extract_keywords(question)
+        print(f"Keywords: {keywords}")
+        conversation_history = search_conversation_history(retrieve_database_history(conn, recall=True), keywords)
+    else:
+        conversation_history = (
+            retrieve_memory_history(memory_history, 5)
+            if memory_history
+            else retrieve_database_history(conn, 5)
+        )
 
     #check for date related question
     doc = nlp(question)
@@ -40,22 +61,10 @@ def handle_question(question, conversation_history, memory_history, conn, curren
         except Exception as e:
             print(f"Error in date answer: {e}")
 
-            
-    
-    recall_phrases = ["remember when", "recall", "search for"]
-    first_words = " ".join(question.lower().split()[:3])
+    print("conversation history: ", conversation_history)
 
-    filtered_history = (
-        conversation_history
-        if any(first_words.startswith(phrase) for phrase in recall_phrases)
-        else [
-            entry
-            for entry in conversation_history
-            if (current_time - entry[0]) <= datetime.timedelta(minutes=5)
-        ]
-    )
-
-    history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in filtered_history)
+    history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in conversation_history)
+    print("conversation history:  ", history_str)
     sentiment = analyze_sentiment(question)
     
     answer = generate_response(question, history_str, sentiment, current_time, date_answer)
