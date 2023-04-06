@@ -12,7 +12,7 @@ openai.Model.retrieve("gpt-3.5-turbo")
 
 nlp = spacy.load("en_core_web_sm")
 
-def handle_question(question, conversation_history, memory_history, conn, current_time):
+def handle_question(question, conversation_history, memory_history, conn, current_time, date_answer):
     current_time = datetime.datetime.now()
     insert_message(conn, current_time, "user", question)
 
@@ -36,7 +36,7 @@ def handle_question(question, conversation_history, memory_history, conn, curren
         try:
             date_info = get_date_info(question)
             if date_info:
-                return date_info
+                date_answer = date_info
         except Exception as e:
             print(f"Error in date answer: {e}")
 
@@ -58,7 +58,7 @@ def handle_question(question, conversation_history, memory_history, conn, curren
     history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in filtered_history)
     sentiment = analyze_sentiment(question)
     
-    answer = generate_response(question, history_str, sentiment, current_time)
+    answer = generate_response(question, history_str, sentiment, current_time, date_answer)
 
     if not answer.strip():
         answer = "I'm sorry, I couldn't understand your question. Please try again."
@@ -74,7 +74,7 @@ def analyze_sentiment(input_text):
     return sentiment
 
 
-def generate_response(input_text, context, sentiment, current_time):
+def generate_response(input_text, context, sentiment, current_time, date_answer=None):
     emotion = (
         "sad"
         if sentiment < -0.2
@@ -84,7 +84,8 @@ def generate_response(input_text, context, sentiment, current_time):
     )
 
     current_date_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
-    system_message = f"Generate a response for a {emotion} user. The current date and time is {current_date_time}.\n{context}\nUser: {input_text}\nAssistant:"
+    date_info_messsage = f"The date information is: {date_answer}." if date_answer else ""
+    system_message = f"Generate a response for a {emotion} user. The current date and time is {current_date_time}. {date_info_messsage}\n{context}\nUser: {input_text}\nAssistant:"
         
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",

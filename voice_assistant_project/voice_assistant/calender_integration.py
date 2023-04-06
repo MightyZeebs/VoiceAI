@@ -9,35 +9,71 @@ nlp = spacy.load("en_core_web_sm")
 
 def get_date_info(question):
     today = datetime.date.today()
-    date_keyword = ["today", "date", "day"]
 
     doc = nlp(question)
     date_detected = False
-    for token in doc:
-        if token.lower_ in date_keyword:
-            parsed_date = dateparser.parse(token.text)
+    relative_date_detected = False
+
+    # Dictionary for relative date phrases
+    relative_date_phrases = {
+        "yesterday": -1,
+        "tomorrow": 1,
+        "last week": -7,
+        "next week": 7,
+        "next month": "next_month",
+        "last month": "last_month",
+    }
+
+    for ent in doc.ents:
+        if ent.label_ == "DATE":
+            parsed_date = dateparser.parse(ent.text)
             if parsed_date is not None:
                 target_date = parsed_date.date()
                 date_detected = True
                 break
 
     if not date_detected:
+        for phrase, value in relative_date_phrases.items():
+            if phrase in question.lower():
+                relative_date_detected = True
+                if isinstance(value, int):
+                    target_date = today + datetime.timedelta(days=value)
+                elif value == "next_month":
+                    year = today.year
+                    month = today.month + 1
+                    if month == 13:
+                        month = 1
+                        year += 1
+                    target_date = datetime.date(year, month, today.day)
+                elif value == "last_month":
+                    year = today.year
+                    month = today.month - 1
+                    if month == 0:
+                        month = 12
+                        year -= 1
+                    target_date = datetime.date(year, month, today.day)
+                break
+
+    if not date_detected and not relative_date_detected:
         print("No Date Info")
         return None
 
-    if target_date == today:
-        return f"Today is {today.strftime('%A, %B %d')}."
-    elif target_date == today + datetime.timedelta(days=1):
-        return f"Tomorrow is {target_date.strftime('%A, %B %d')}."
-    elif target_date > today and target_date < today + datetime.timedelta(days=7):
-        return f"{target_date.strftime('%A')} is {target_date.strftime('%B %d')}."
-    elif target_date.month == today.month and target_date.year == today.year:
-        days_left = (target_date - today).days
-        return f"There are {days_left} days left until {target_date.strftime('%A, %B %d')}."
-    elif target_date.year == today.year:
-        return f"{target_date.strftime('%A, %B %d')} is in {target_date.month - today.month} months."
-    else:
-        return f"{target_date.strftime('%A, %B %d, %Y')} is in {target_date.year - today.year} years."
+    return f"{target_date.strftime('%A, %B %d, %Y')}."
+
+
+    # if target_date == today:
+    #     return f"Today is {today.strftime('%A, %B %d')}."
+    # elif target_date == today + datetime.timedelta(days=1):
+    #     return f"Tomorrow is {target_date.strftime('%A, %B %d')}."
+    # elif target_date > today and target_date < today + datetime.timedelta(days=7):
+    #     return f"{target_date.strftime('%A')} is {target_date.strftime('%B %d')}."
+    # elif target_date.month == today.month and target_date.year == today.year:
+    #     days_left = (target_date - today).days
+    #     return f"There are {days_left} days left until {target_date.strftime('%A, %B %d')}."
+    # elif target_date.year == today.year:
+    #     return f"{target_date.strftime('%A, %B %d')} is in {target_date.month - today.month} months."
+    # else:
+    #     return f"{target_date.strftime('%A, %B %d, %Y')} is in {target_date.year - today.year} years."
     
     
 def get_calendar_service():

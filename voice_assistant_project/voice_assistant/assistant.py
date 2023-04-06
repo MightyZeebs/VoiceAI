@@ -104,7 +104,7 @@ class VoiceAssistant:
                                         Current_time = datetime.datetime.now()
                                         insert_message(self.conn, str(Current_time), "user", transcript)
 
-                                        answer = handle_question(transcript, conversation_history, memory_history, self.conn, Current_time)
+                                        answer = handle_question(transcript, conversation_history, memory_history, self.conn, Current_time, date_answer=None)
                                         audio_content = sythesize_speech(answer)
                                         print("assistant:", answer)
                                         play_speech_threaded(audio_content)
