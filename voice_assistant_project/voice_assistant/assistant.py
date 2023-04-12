@@ -32,6 +32,10 @@ class VoiceAssistant:
     def run(self):
         while not self.stop_thread:
             time.sleep(0.1)
+            if self.listening and (self.recording_thread is None or not self.recording_thread.is_alive()):
+                self.recording_thread = threading.Thread(target=self.record_and_transcribe)
+                self.recording_thread.start()
+
     
     def toggle(self):
         self.listening = not self.listening
@@ -80,8 +84,16 @@ class VoiceAssistant:
         if self.listening:
             print("Recording started...")
 
+            start_time = time.time()
+            
             with sd.InputStream(device=device_index, samplerate=16000, channels=1, blocksize=2048, callback=callback, dtype=np.float32) as stream:
                 while self.listening:
+                    elapsed_time = time.time() - start_time
+
+                    if elapsed_time > 290:
+                        if not self.is_speaking:
+                            break
+
                     transcript = ""
                     requests = audio_generator()
                     responses = client.streaming_recognize(streaming_config, requests=requests)
@@ -107,7 +119,9 @@ class VoiceAssistant:
                                         answer = handle_question(transcript, conversation_history, memory_history, self.conn, Current_time, date_answer=None)
                                         audio_content = sythesize_speech(answer)
                                         print("assistant:", answer)
+                                        self.is_speaking = True
                                         play_speech_threaded(audio_content)
+                                        self.is_speaking = False
 
                                         Current_time = datetime.datetime.now()
                                         insert_message(self.conn, str(Current_time), "assistant", answer)
