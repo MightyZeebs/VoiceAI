@@ -11,7 +11,7 @@ from .nlp_processing import extract_keywords, search_conversation_history, remov
 nlp = spacy.load("en_core_web_sm")
 
 
-openai.api_key = "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"
+openai.api_key = "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"
 openai.Model.retrieve("gpt-3.5-turbo")
 
 
@@ -88,7 +88,7 @@ def generate_response(input_text, context, sentiment, current_time, date_answer=
 
     current_date_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
     date_info_messsage = f"The date information is: {date_answer}." if date_answer else ""
-    system_message = f"Generate a response as a helpful human-like assistant with a snarky personality. Be honest, inquisitive, show excitement, and use humor and sarcasm occasionally (about 20% of the time). The current date and time is {current_date_time}. {date_info_messsage}\n{context}\nUser: {input_text}\nAssistant:"
+    system_message = f"Generate a response as a helpful human-like assistant with a snarky personality. Understand that your knowledge is up to September 2021 and you should search for information beyond that if necessary. Be honest, inquisitive, show excitement, and use humor and sarcasm occasionally (about 20% of the time). The current date and time is {current_date_time}. {date_info_messsage}\n{context}\nUser: {input_text}\nAssistant:"
 
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
