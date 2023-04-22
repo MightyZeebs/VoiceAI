@@ -11,7 +11,7 @@ from .nlp_processing import extract_keywords, search_conversation_history, remov
 nlp = spacy.load("en_core_web_sm")
 
 
-openai.api_key = "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"
+openai.api_key = "api_key_here"
 openai.Model.retrieve("gpt-3.5-turbo")
 
 

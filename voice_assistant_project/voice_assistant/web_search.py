@@ -52,6 +52,7 @@ def scrape_and_extract_text(urls, max_successful=3):
 def filter_and_summarize_text(text_data, keywords):
     summaries = []
     for idx, (url, text) in enumerate(text_data):
+        summary_generated = False
         for keyword in keywords:
             if keyword.lower() in text.lower():
                 inputs = tokenizer("summarize: " + text, max_length=1024, return_tensors='pt', truncation=True)
@@ -59,9 +60,12 @@ def filter_and_summarize_text(text_data, keywords):
                 summarized_text = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
                 if any(kw in summarized_text for kw in keywords):
-                    summaries.append((url, summarized_text))  # Changed this line
+                    summaries.append((url, summarized_text))
                     print(f"Generated Summary for URL {idx+1}: {url}\nSummary: {summarized_text}\n")
+                    summary_generated = True
                     break
+        if summary_generated:
+            break
     return summaries
 
 # Test the functionality of the code
