@@ -12,7 +12,7 @@ from .utils import audio_buffer
 from .database import create_connection, create_table, insert_message
 from .openai_integration import handle_question
 from .speech import sythesize_speech, play_speech_threaded, callback
-
+from threading import Lock
 
 memory_history = []
 device_index = None
@@ -28,6 +28,12 @@ class VoiceAssistant:
         self.deactivation_keyword = deactivation_keyword
         self.conn = create_connection("conversation_history.db")
         create_table(self.conn)
+        self.conversation_history = []
+        self.memory_history = []
+        self.toggle_lock = Lock()
+        
+        self.activation_listener_thread = threading.Thread(target=self.activation_listener, args=('alt+x', 'Gemini answer'))
+        self.activation_listener_thread.start()
 
     def run(self):
         while not self.stop_thread:
@@ -38,21 +44,17 @@ class VoiceAssistant:
 
     
     def toggle(self):
-        self.listening = not self.listening
-        print("listening flag flip")
-        
-        if self.listening:
-            print("Voice assistant activated")
-            self.toggle_event.clear()
-            if self.recording_thread is None or not self.recording_thread.is_alive():
-                self.recording_thread = threading.Thread(target=self.record_and_transcribe)
-                self.recording_thread.start()
+        with self.toggle_lock:
+            self.listening = not self.listening
+            print("listening flag flip")
+            
+            if self.listening:
+                print("Voice assistant activated")
+                self.toggle_event.clear()
+            else:
+                print("Voice assistant deactivated")
+                self.toggle_event.set()
 
-        else:
-            print("Voice assistant deactivated")
-            self.stop_recording()
-            self.toggle_event.set()
-            self.stop_recording()
 
 
     def record_and_transcribe(self):
@@ -143,6 +145,10 @@ class VoiceAssistant:
     def activation_listener(self, hotkey, keyword):
         keyboard.add_hotkey(hotkey, self.toggle)
 
+        activation_listener_thread = threading.Thread(target=self.activation_keyword_listener, args=(keyword,))
+        activation_listener_thread.start()
+        
+    def activation_keyword_listener(self, keyword):
         r = sr.Recognizer()
         r.energy_threshold = 1500
         microphone = sr.Microphone()
@@ -169,7 +175,6 @@ class VoiceAssistant:
                     pass
                 except sr.RequestError as e:
                     print("Error occurred during sphinx recognition:", e)
-
             time.sleep(0.1)
                 
                 

@@ -1,14 +1,18 @@
-from voice_assistant import VoiceAssistant
-from voice_assistant import delete_audio_files
-
+from voice_assistant import VoiceAssistant, delete_audio_files
+from voice_assistant.GUI import create_GUI
+import threading
 
 def main():
     assistant = VoiceAssistant()
 
-    assistant.activation_listener('alt+x', 'Gemini answer')
+    assistant_run_thread = threading.Thread(target=assistant.run)
+    assistant_run_thread.start()
 
-    assistant.run()
+    root = create_GUI(assistant)
+    root.mainloop()
 
 if __name__ == "__main__":
     delete_audio_files()
-    main()
+    main_thread = threading.Thread(target=main)
+    main_thread.start()
+

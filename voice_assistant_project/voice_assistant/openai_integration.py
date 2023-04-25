@@ -1,17 +1,21 @@
 import openai
+import os
 import datetime
 from textblob import TextBlob
 import datetime
 import re
 import spacy
+from dotenv import load_dotenv
 from .calender_integration import get_calendar_service, get_date_info, create_reminder
 from .database import insert_message, retrieve_database_history, retrieve_memory_history
 from .nlp_processing import extract_keywords, search_conversation_history, remove_duplicates
 
 nlp = spacy.load("en_core_web_sm")
 
+load_dotenv()
 
-openai.api_key = "api_key_here"
+openai_api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = openai_api_key
 openai.Model.retrieve("gpt-3.5-turbo")
 
 
@@ -116,4 +120,3 @@ def generate_response(input_text, context, sentiment, current_time, date_answer=
         answer = response.choices[0].message.content.strip()
 
     return answer
-
