@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from voice_assistant import sythesize_speech, play_speech_threaded
 from voice_assistant.openai_integration import handle_question
-
+from .database import reset_chat
 def create_GUI(assistant):
     def process_query():
         query = entry.get()
@@ -16,6 +16,15 @@ def create_GUI(assistant):
 
     def toggle_voice_activation():
         assistant.toggle()
+    
+    def set_deactivation_keyword(keyword):
+        global deactivation_keyword
+        deactivation_keyword = keyword
+        print(f"Deactivation keyword set to '{keyword}'")
+
+    def reset_chat_button(reset_chat):
+        reset_chat()
+
 
     root = tk.Tk()
     root.title("Voice Assistant GUI")
@@ -29,8 +38,18 @@ def create_GUI(assistant):
     search_button = ttk.Button(frame, text="Search", command=process_query)
     search_button.grid(row=2, column=0, sticky=tk.W)
 
-    response_label = ttk.Label(frame, text="")
+    response_text = tk.StringVar()
+    response_label = ttk.Label(frame, textvariable=response_text)
     response_label.grid(row=3, column=0, sticky=tk.W)
+
+    # Clear memory history button
+    reset_chat = ttk.Button(frame, text="reset chat", command=lambda: reset_chat_button)
+    reset_chat.grid(row=5, column=0, sticky=tk.W)
+
+    # Set deactivation keyword button
+    set_deactivation_keyword_button = ttk.Button(frame, text="Set Deactivation Keyword", command=set_deactivation_keyword)
+    set_deactivation_keyword_button.grid(row=6, column=0, sticky=tk.W)
+
 
     toggle_button = ttk.Button(frame, text="Toggle Voice Activation", command=toggle_voice_activation)
     toggle_button.grid(row=4, column=0, sticky=tk.W)

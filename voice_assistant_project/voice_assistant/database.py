@@ -1,9 +1,6 @@
 import sqlite3
 import datetime
 
-# Your database-related functions (create_connection, create_table, etc.) go here
-
-
 def create_connection(db_file):
     #create a connection to the SQLite database
     conn = None
@@ -65,10 +62,13 @@ def retrieve_database_history(conn, minutes=5, recall=False):
         print(e)
         return []
 
-
-
 def retrieve_memory_history(conversation_history, minutes=5):
     current_time = datetime.datetime.now()
     time_threshold = current_time - datetime.timedelta(minutes=minutes)
     memory_history = [item for item in conversation_history if item[0] >= time_threshold]
     return memory_history
+
+def reset_chat():
+    print("Resetting memory")
+    global memory_history
+    memory_history = []

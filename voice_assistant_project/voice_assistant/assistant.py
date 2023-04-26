@@ -176,5 +176,10 @@ class VoiceAssistant:
                 except sr.RequestError as e:
                     print("Error occurred during sphinx recognition:", e)
             time.sleep(0.1)
-                
-                
+    def set_deactivation_keyword(keyword):
+        global deactivation_keyword
+        deactivation_keyword = keyword
+        print(f"Deactivation keyword set to '{keyword}'")
+
+
+                   

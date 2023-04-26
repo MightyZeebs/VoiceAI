@@ -25,7 +25,7 @@ def handle_question(question, conversation_history, memory_history, conn, curren
 
     recall_phrases = ["remember when", "recall", "search for"]
     recall_detected = any(phrase in question.lower() for phrase in recall_phrases)
-    
+
     if recall_detected:
         print("Recall phrase detected")
         keywords = extract_keywords(question, recall_phrases)
@@ -59,7 +59,7 @@ def handle_question(question, conversation_history, memory_history, conn, curren
 
     unique_conversation_history = remove_duplicates(conversation_history)
 
-    print("Unique conversation history: ", unique_conversation_history)
+    #print("Unique conversation history: ", unique_conversation_history)
 
     history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in unique_conversation_history)
     print("history_str:  ", history_str)
@@ -69,8 +69,8 @@ def handle_question(question, conversation_history, memory_history, conn, curren
 
     if not answer.strip():
         answer = "I'm sorry, I couldn't understand your question. Please try again."
-
-    unique_conversation_history.append((current_time, "Assistant: " + answer))
+    else:
+        unique_conversation_history.append((current_time, "Assistant: " + answer))
 
     return answer
 
