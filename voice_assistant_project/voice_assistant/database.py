@@ -61,14 +61,3 @@ def retrieve_database_history(conn, minutes=5, recall=False):
     except sqlite3.Error as e:
         print(e)
         return []
-
-def retrieve_memory_history(conversation_history, minutes=5):
-    current_time = datetime.datetime.now()
-    time_threshold = current_time - datetime.timedelta(minutes=minutes)
-    memory_history = [item for item in conversation_history if item[0] >= time_threshold]
-    return memory_history
-
-def reset_chat():
-    print("Resetting memory")
-    global memory_history
-    memory_history = []

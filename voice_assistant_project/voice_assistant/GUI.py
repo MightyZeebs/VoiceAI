@@ -3,13 +3,14 @@ import tkinter as tk
 from tkinter import ttk
 from voice_assistant import sythesize_speech, play_speech_threaded
 from voice_assistant.openai_integration import handle_question
-from .database import reset_chat
+# from voice_assistant.database import reset_chat
+
 def create_GUI(assistant):
     def process_query():
         query = entry.get()
         if query:
             current_time = datetime.datetime.now()
-            response = handle_question(query, assistant.conversation_history, assistant.memory_history, assistant.conn, current_time, date_answer=None)
+            response = handle_question(query, assistant.conversation_history, assistant.conn, current_time, date_answer=None)
             audio_file_path = sythesize_speech(response)
             play_speech_threaded(audio_file_path)
             response_label.config(text=response)
@@ -22,9 +23,9 @@ def create_GUI(assistant):
         deactivation_keyword = keyword
         print(f"Deactivation keyword set to '{keyword}'")
 
-    def reset_chat_button(reset_chat):
-        reset_chat()
-
+    def reset_chat():
+        handle_question("Let's start fresh and forget everything we talked about before", assistant.conversation_history, assistant.conn, datetime.datetime.now(), date_answer=None)
+        return
 
     root = tk.Tk()
     root.title("Voice Assistant GUI")
@@ -42,13 +43,13 @@ def create_GUI(assistant):
     response_label = ttk.Label(frame, textvariable=response_text)
     response_label.grid(row=3, column=0, sticky=tk.W)
 
-    # Clear memory history button
-    reset_chat = ttk.Button(frame, text="reset chat", command=lambda: reset_chat_button)
-    reset_chat.grid(row=5, column=0, sticky=tk.W)
-
     # Set deactivation keyword button
     set_deactivation_keyword_button = ttk.Button(frame, text="Set Deactivation Keyword", command=set_deactivation_keyword)
     set_deactivation_keyword_button.grid(row=6, column=0, sticky=tk.W)
+
+    # Reset chat button
+    reset_chat_button = ttk.Button(frame, text="Reset Chat", command=reset_chat)
+    reset_chat_button.grid(row=5, column=0, sticky=tk.W)
 
 
     toggle_button = ttk.Button(frame, text="Toggle Voice Activation", command=toggle_voice_activation)

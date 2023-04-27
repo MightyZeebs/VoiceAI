@@ -7,7 +7,7 @@ import re
 import spacy
 from dotenv import load_dotenv
 from .calender_integration import get_calendar_service, get_date_info, create_reminder
-from .database import insert_message, retrieve_database_history, retrieve_memory_history
+from .database import insert_message, retrieve_database_history
 from .nlp_processing import extract_keywords, search_conversation_history, remove_duplicates
 
 nlp = spacy.load("en_core_web_sm")
@@ -19,7 +19,7 @@ openai.api_key = openai_api_key
 openai.Model.retrieve("gpt-3.5-turbo")
 
 
-def handle_question(question, conversation_history, memory_history, conn, current_time, date_answer):
+def handle_question(question, conversation_history, conn, current_time, date_answer):
     current_time = datetime.datetime.now()
     insert_message(conn, current_time, "user", question)
 
@@ -32,11 +32,7 @@ def handle_question(question, conversation_history, memory_history, conn, curren
         print(f"Keywords: {keywords}")
         conversation_history = search_conversation_history(retrieve_database_history(conn, recall=True), keywords)      
     else:
-        conversation_history = (
-            retrieve_memory_history(memory_history, 5)
-            if memory_history
-            else retrieve_database_history(conn, minutes=5)
-        )
+        conversation_history = retrieve_database_history(conn, minutes=5)
 
     
     #check for date related question

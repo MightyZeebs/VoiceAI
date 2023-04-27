@@ -14,7 +14,6 @@ from .openai_integration import handle_question
 from .speech import sythesize_speech, play_speech_threaded, callback
 from threading import Lock
 
-memory_history = []
 device_index = None
 conversation_history = []
 
@@ -29,7 +28,6 @@ class VoiceAssistant:
         self.conn = create_connection("conversation_history.db")
         create_table(self.conn)
         self.conversation_history = []
-        self.memory_history = []
         self.toggle_lock = Lock()
         
         self.activation_listener_thread = threading.Thread(target=self.activation_listener, args=('alt+x', 'Gemini answer'))
@@ -118,7 +116,7 @@ class VoiceAssistant:
                                         Current_time = datetime.datetime.now()
                                         insert_message(self.conn, str(Current_time), "user", transcript)
 
-                                        answer = handle_question(transcript, conversation_history, memory_history, self.conn, Current_time, date_answer=None)
+                                        answer = handle_question(transcript, conversation_history, self.conn, Current_time, date_answer=None)
                                         audio_content = sythesize_speech(answer)
                                         print("assistant:", answer)
                                         self.is_speaking = True
@@ -180,6 +178,5 @@ class VoiceAssistant:
         global deactivation_keyword
         deactivation_keyword = keyword
         print(f"Deactivation keyword set to '{keyword}'")
-
 
                    
