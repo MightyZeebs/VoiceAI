@@ -29,6 +29,7 @@ class VoiceAssistant:
         create_table(self.conn)
         self.conversation_history = []
         self.toggle_lock = Lock()
+        self.main_thread_exited = threading.Event()
         
         self.activation_listener_thread = threading.Thread(target=self.activation_listener, args=('alt+x', 'Gemini answer'))
         self.activation_listener_thread.start()
@@ -112,7 +113,7 @@ class VoiceAssistant:
                                     if self.deactivation_keyword.lower() in transcript.lower():
                                         self.toggle()
                                     if self.listening:
-
+                                        print(f"[{time.strftime('%H:%M:%S')}] Sent to OpenAI API")
                                         Current_time = datetime.datetime.now()
                                         insert_message(self.conn, str(Current_time), "user", transcript)
 
@@ -178,5 +179,14 @@ class VoiceAssistant:
         global deactivation_keyword
         deactivation_keyword = keyword
         print(f"Deactivation keyword set to '{keyword}'")
+        
+    def stop(self):
+        self.stop_thread = True
+        self.toggle_event.set()
+        if self.recording_thread is not None:
+            self.recording_thread.join(timeout=1)
+        self.activation_listener_thread.join()
+        self.conn.close()
+        self.main_thread_exited.set()
 
-                   
+

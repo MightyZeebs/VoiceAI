@@ -1,9 +1,12 @@
 import datetime
+import pystray
 import tkinter as tk
 from tkinter import ttk
 from voice_assistant import sythesize_speech, play_speech_threaded
 from voice_assistant.openai_integration import handle_question
-# from voice_assistant.database import reset_chat
+from PIL import Image
+import sys
+import threading
 
 def create_GUI(assistant):
     def process_query():
@@ -14,7 +17,32 @@ def create_GUI(assistant):
             audio_file_path = sythesize_speech(response)
             play_speech_threaded(audio_file_path)
             response_label.config(text=response)
+            
+    def shutdown():
+        assistant.stop()
+        root.destroy()
+        main_thread = threading.current_thread()
+        for t in threading.enumerate():
+            if t is not main_thread:
+                t.join(timeout=1)
+        assistant.main_thread_exited.set()
+        sys.exit()
 
+
+    def minimize_to_tray(root):
+        root.iconify()
+        def restore_window(icon, item):
+            icon.stop()
+            root.deiconify()
+        tray_icon_image = Image.open("C:\\Users\\Zeebra\\code\\VoiceAI\\Jarvis.jfif")
+        tray_icon = pystray.Icon("name", tray_icon_image, "My System Tray Icon", menu=pystray.Menu(pystray.MenuItem('Open', restore_window)))
+        tray_icon.run()
+
+    def on_closing():
+        # assistant.stop_thread = True
+        # assistant.stop_recording()
+        minimize_to_tray(root)
+    
     def toggle_voice_activation():
         assistant.toggle()
     
@@ -51,8 +79,14 @@ def create_GUI(assistant):
     reset_chat_button = ttk.Button(frame, text="Reset Chat", command=reset_chat)
     reset_chat_button.grid(row=5, column=0, sticky=tk.W)
 
+    #shutdown button 
+    shutdown_button = tk.Button(root, text="Shutdown", command=shutdown)
+    shutdown_button.grid(row=7, column=0, sticky='se')
+
 
     toggle_button = ttk.Button(frame, text="Toggle Voice Activation", command=toggle_voice_activation)
     toggle_button.grid(row=4, column=0, sticky=tk.W)
+
+    root.protocol("WM_DELETE_WINDOW", on_closing)
 
     return root
