@@ -8,6 +8,7 @@ import sys
 import uuid
 from google.cloud import texttospeech 
 from .utils import audio_buffer
+play_speech_event = threading.Event()
 
 temp_files=[]
 temp_files_lock = threading.Lock()
@@ -44,7 +45,7 @@ def sythesize_speech(text):
 
     return audio_file_path
 
-def play_speech(audio_file_path):
+def play_speech(audio_file_path, stop_event=None):
     # Set environment variable to hide the pygame support prompt
     os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
     
@@ -65,16 +66,11 @@ def play_speech(audio_file_path):
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.USEREVENT:
+                    break
+            if stop_event and stop_event.is_set():
                     pygame.mixer.music.stop()
-
-                    while True:
-                        try:
-                            os.remove(audio_file_path)
-                            break
-                        except PermissionError:
-                            time.sleep(0.1)
-                    return
             pygame.time.Clock().tick(10)
+
     except pygame.error as e:
         print(f"Error occurred while playing speech: {e}")
         while True:
@@ -93,11 +89,9 @@ def play_speech(audio_file_path):
                 time.sleep(1)
     finally:
         # Delete the audio file if an exception occurs
-        if audio_file_path in temp_files:
-            temp_files.remove(audio_file_path)
         if os.path.exists(audio_file_path):
             os.remove(audio_file_path)  
 
-def play_speech_threaded(audio_file_path):
-    play_thread = threading.Thread(target=play_speech, args=(audio_file_path,))
+def play_speech_threaded(audio_file_path, stop_event=None):
+    play_thread = threading.Thread(target=play_speech, args=(audio_file_path, stop_event), daemon=True)
     play_thread.start()

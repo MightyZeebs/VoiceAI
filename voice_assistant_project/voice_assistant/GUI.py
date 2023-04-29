@@ -25,24 +25,26 @@ def create_GUI(assistant):
         for t in threading.enumerate():
             if t is not main_thread:
                 t.join(timeout=1)
+        sys.modules['voice_assistant.speech'].play_speech_event.set()
         assistant.main_thread_exited.set()
         sys.exit()
 
+    def on_closing():
+        minimize_to_tray(root)
 
+    def on_restore(icon, item):
+        icon.stop()
+        root.deiconify()
+        root.protocol("WM_DELTE_WINDOW", on_closing)
+        root.update()
+    
     def minimize_to_tray(root):
         root.iconify()
-        def restore_window(icon, item):
-            icon.stop()
-            root.deiconify()
+        root.overrideredirect(True)        
         tray_icon_image = Image.open("C:\\Users\\Zeebra\\code\\VoiceAI\\Jarvis.jfif")
-        tray_icon = pystray.Icon("name", tray_icon_image, "My System Tray Icon", menu=pystray.Menu(pystray.MenuItem('Open', restore_window)))
+        tray_icon = pystray.Icon("name", tray_icon_image, "My System Tray Icon", menu=pystray.Menu(pystray.MenuItem('Open', on_restore)))
         tray_icon.run()
 
-    def on_closing():
-        # assistant.stop_thread = True
-        # assistant.stop_recording()
-        minimize_to_tray(root)
-    
     def toggle_voice_activation():
         assistant.toggle()
     

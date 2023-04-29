@@ -30,7 +30,7 @@ class VoiceAssistant:
         self.conversation_history = []
         self.toggle_lock = Lock()
         self.main_thread_exited = threading.Event()
-        
+        self.stream = None
         self.activation_listener_thread = threading.Thread(target=self.activation_listener, args=('alt+x', 'Gemini answer'))
         self.activation_listener_thread.start()
 
@@ -38,7 +38,7 @@ class VoiceAssistant:
         while not self.stop_thread:
             time.sleep(0.1)
             if self.listening and (self.recording_thread is None or not self.recording_thread.is_alive()):
-                self.recording_thread = threading.Thread(target=self.record_and_transcribe)
+                self.recording_thread = threading.Thread(target=self.record_and_transcribe, daemon=True)
                 self.recording_thread.start()
 
     
@@ -87,8 +87,10 @@ class VoiceAssistant:
 
             start_time = time.time()
             
-            with sd.InputStream(device=device_index, samplerate=16000, channels=1, blocksize=2048, callback=callback, dtype=np.float32) as stream:
-                while self.listening:
+            self.stream = sd.InputStream(device=self.device_index, samplerate=16000, channels=1, blocksize=2048, callback=callback, dtype=np.float32)
+            self.stream.start()
+                
+            while self.listening:
                     elapsed_time = time.time() - start_time
 
                     if elapsed_time > 290:
@@ -134,6 +136,7 @@ class VoiceAssistant:
                         print("An error occurred:", e)
                         traceback.print_exc()
                         break
+            self.stream.stop()
 
     def stop_recording(self):
         if self.recording_thread is not None and self.recording_thread is not threading.current_thread():
@@ -144,7 +147,7 @@ class VoiceAssistant:
     def activation_listener(self, hotkey, keyword):
         keyboard.add_hotkey(hotkey, self.toggle)
 
-        activation_listener_thread = threading.Thread(target=self.activation_keyword_listener, args=(keyword,))
+        activation_listener_thread = threading.Thread(target=self.activation_keyword_listener, args=(keyword,), daemon=True)
         activation_listener_thread.start()
         
     def activation_keyword_listener(self, keyword):
