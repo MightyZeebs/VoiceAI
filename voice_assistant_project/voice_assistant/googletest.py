@@ -1,7 +1,10 @@
 import requests
+import random
+import time
 import nltk
 import PyPDF2
 import os
+import urllib.parse
 from bs4 import BeautifulSoup
 import spacy
 from dotenv import load_dotenv
@@ -61,41 +64,42 @@ def bing_search(query, num_results=1):
         print(f"Error occurred during Bing Search: {e}")
     return search_results, top_snippet
 
-
-def google_search(query, num_results=1):
-    search_results = []
+def google_search(query):
     featured_snippet = None
-    knowledge_panel = None
     try:
-        params = {
-            "q": query,
-            "hl": "en",  # language
-            "gl": "us",  # country of the search, US -> USA
-            "num": num_results,
-        }
+        base_url = "https://www.google.com/search?q=" + urllib.parse.quote_plus(query)
+
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         }
-        html = requests.get("https://www.google.com/search", params=params, headers=headers, timeout=30)
-        soup = BeautifulSoup(html.text, "lxml")
-        
-        # Extract featured snippet
-        featured_snippet = soup.select_one("span.hgKElc")
-        if featured_snippet:
-            featured_snippet = featured_snippet.text
 
-        # Extract knowledge panel
-        knowledge_panel = soup.select_one(".kno-rdesc span")
-        if knowledge_panel:
-            knowledge_panel = knowledge_panel.text
+        response = requests.get(base_url, headers=headers)
+        soup = BeautifulSoup(response.content, "html.parser")
 
-        # Extract search results
-        for result in soup.select(".yuRUbf > a"):
-            search_results.append(result["href"])
+        # Extract the featured snippet from the search results
+        featured_snippet_container = soup.find("div", class_="BNeawe s3v9rd AP7Wnd")
+        if featured_snippet_container:
+            featured_snippet = featured_snippet_container.get_text()
+
     except Exception as e:
         print(f"Error occurred during Google Search: {e}")
+    
+    # Sleep for a random interval between requests
+    time.sleep(random.uniform(1, 5))
 
-    return search_results, featured_snippet, knowledge_panel
+    return featured_snippet
+
+# Test the functionality of the code
+query = "what was the name of the most recent hurricane that hit south florida"
+print("Question: ", query)
+
+featured_snippet = google_search(query)
+if featured_snippet:
+    print(f"Featured Snippet: {featured_snippet}\n")
+else:
+    print("No featured snippet found.\n")
+
+
 
 def scrape_and_extract_text(urls, max_successful=3):
     text_data = []
@@ -193,34 +197,29 @@ def extract_text_from_pdf(url):
 #         print(f"URL: {url}\nSummary: {summary}\n")
 
 # Test the functionality of the code
-query = "what year was trump 20 years old"
-print("Question: ", query)
+# Test the functionality of the code
+query = "what was the name of the most recent hurricane that hit south florida"
+print("question: ", query)
 num_results = 8
-keywords = extract_keywords(query)
-print("Extracted keywords: ", keywords)
+# keywords = extract_keywords(query)
+# print("Extracted keywords: ", keywords)
 
-# Use Google Search
-urls, featured_snippet, knowledge_panel = google_search(query, num_results=num_results)
 
+# Update the code to handle the Bing top snippet
+# Update the code to scrape Google search instead of using the Custom Search API
+featured_snippet = google_search(query)
 if featured_snippet:
     print(f"Featured Snippet: {featured_snippet}\n")
 else:
     print("No featured snippet found.\n")
 
-if knowledge_panel:
-    print("Knowledge panel:")
-    print(knowledge_panel)
-else:
-    print("No knowledge panel found.\n")
 
-print("Retrieved URLs:", urls)
-
-text_data = scrape_and_extract_text(urls, max_successful=3)
-print("text data scraped")
-summaries = filter_and_summarize_text(text_data, keywords)
-print("Summaries:")
-for url, summary in summaries:
-    print(f"URL: {url}\nSummary: {summary}\n")
+# text_data = scrape_and_extract_text(urls, max_successful=3)
+# print("text data scraped")
+# summaries = filter_and_summarize_text(text_data, keywords)
+# print("Summaries:")
+# for url, summary in summaries:
+#     print(f"URL: {url}\nSummary: {summary}\n")
 
 #print("Testing follow-up query:")
 # summary_number = 3  # Replace this with the spoken input once integrated with the voice assistant
