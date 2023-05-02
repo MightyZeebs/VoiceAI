@@ -1,5 +1,4 @@
 import os
-import tempfile
 import pygame
 import time
 import threading
@@ -9,9 +8,6 @@ import uuid
 from google.cloud import texttospeech 
 from .utils import audio_buffer
 play_speech_event = threading.Event()
-
-temp_files=[]
-temp_files_lock = threading.Lock()
 
 def callback(indata, frames, time, status):
     # Define a callback function to handle audio data
@@ -62,14 +58,15 @@ def play_speech(audio_file_path, stop_event=None):
         # Event to detect when audio is finished
         pygame.mixer.music.set_endevent(pygame.USEREVENT)
 
-        # Wait for the audio to finish playing and then delete the audio file
-        while True:
+        audio_finished = False
+        while not audio_finished:
             for event in pygame.event.get():
                 if event.type == pygame.USEREVENT:
-                    break
+                    audio_finished = True
             if stop_event and stop_event.is_set():
                     pygame.mixer.music.stop()
             pygame.time.Clock().tick(10)
+
 
     except pygame.error as e:
         print(f"Error occurred while playing speech: {e}")
@@ -87,10 +84,6 @@ def play_speech(audio_file_path, stop_event=None):
             except pygame.error:
                 # If the error occurs again, retry after a longer delay
                 time.sleep(1)
-    finally:
-        # Delete the audio file if an exception occurs
-        if os.path.exists(audio_file_path):
-            os.remove(audio_file_path)  
 
 def play_speech_threaded(audio_file_path, stop_event=None):
     play_thread = threading.Thread(target=play_speech, args=(audio_file_path, stop_event), daemon=True)

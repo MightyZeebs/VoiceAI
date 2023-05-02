@@ -8,7 +8,7 @@ import keyboard
 import threading
 import speech_recognition as sr
 from google.cloud import speech
-from .utils import audio_buffer
+from voice_assistant.utils import audio_buffer
 from .database import create_connection, create_table, insert_message
 from .openai_integration import handle_question
 from .speech import sythesize_speech, play_speech_threaded, callback
@@ -31,15 +31,42 @@ class VoiceAssistant:
         self.toggle_lock = Lock()
         self.main_thread_exited = threading.Event()
         self.stream = None
-        self.activation_listener_thread = threading.Thread(target=self.activation_listener, args=('alt+x', 'Gemini answer'))
+        self.activation_listener_thread = threading.Thread(target=self.activation_listener, args=('alt+x', '-'))
         self.activation_listener_thread.start()
+        self.push_to_talk_mode = False
+        self.client = speech.SpeechClient()
+        self.config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+            sample_rate_hertz=16000,
+            language_code="en-US"
+        )
+        self.streaming_config = speech.StreamingRecognitionConfig(
+            config=self.config,
+            interim_results=False
+        )
+    
+    def audio_generator(self):
+            global device_index
+
+            while self.listening:
+                if self.listening:
+                    try:
+                        data = audio_buffer.get(timeout=1)
+                        yield speech.StreamingRecognizeRequest(audio_content=data.tobytes())
+                    except queue.Empty:
+                        pass
+                else:
+                    time.sleep(0.1)
 
     def run(self):
+        print("starting 'run' thread")
         while not self.stop_thread:
             time.sleep(0.1)
             if self.listening and (self.recording_thread is None or not self.recording_thread.is_alive()):
                 self.recording_thread = threading.Thread(target=self.record_and_transcribe, daemon=True)
                 self.recording_thread.start()
+                self.recording_thread.join()
+        print("stopping 'run' thread")
 
     
     def toggle(self):
@@ -56,32 +83,7 @@ class VoiceAssistant:
 
 
 
-    def record_and_transcribe(self):
-        client = speech.SpeechClient()
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,
-            language_code="en-US"
-        )
-
-        streaming_config = speech.StreamingRecognitionConfig(
-            config=config,
-            interim_results=False
-        )
-
-        def audio_generator():
-            global device_index
-
-            while not self.toggle_event.is_set():
-                if self.listening:
-                    try:
-                        data = audio_buffer.get(timeout=1)
-                        yield speech.StreamingRecognizeRequest(audio_content=data.tobytes())
-                    except queue.Empty:
-                        pass
-                else:
-                    time.sleep(0.1)
-
+    def record_and_transcribe(self):    
         if self.listening:
             print("Recording started...")
 
@@ -89,20 +91,21 @@ class VoiceAssistant:
             
             self.stream = sd.InputStream(device=self.device_index, samplerate=16000, channels=1, blocksize=2048, callback=callback, dtype=np.float32)
             self.stream.start()
-                
-            while self.listening:
+
+            transcript_buffer = ""
+
+            while self.listening and (not self.push_to_talk_mode or not self.toggle_event.is_set()):
                     elapsed_time = time.time() - start_time
 
                     if elapsed_time > 290:
                         if not self.is_speaking:
                             break
 
-                    transcript = ""
-                    requests = audio_generator()
-                    responses = client.streaming_recognize(streaming_config, requests=requests)
+                    requests = self.audio_generator()
+                    responses = self.client.streaming_recognize(self.streaming_config, requests=requests)
                     response_iterator = iter(responses)
 
-                    try:                      
+                    try:
                         for response in response_iterator:
                             if not response.results:
                                 print("No transcription results found.")
@@ -114,21 +117,12 @@ class VoiceAssistant:
 
                                     if self.deactivation_keyword.lower() in transcript.lower():
                                         self.toggle()
-                                    if self.listening:
-                                        print(f"[{time.strftime('%H:%M:%S')}] Sent to OpenAI API")
-                                        Current_time = datetime.datetime.now()
-                                        insert_message(self.conn, str(Current_time), "user", transcript)
+                                        break
 
-                                        answer = handle_question(transcript, conversation_history, self.conn, Current_time, date_answer=None)
-                                        audio_content = sythesize_speech(answer)
-                                        print("assistant:", answer)
-                                        self.is_speaking = True
-                                        play_speech_threaded(audio_content)
-                                        self.is_speaking = False
-
-                                        Current_time = datetime.datetime.now()
-                                        insert_message(self.conn, str(Current_time), "assistant", answer)
-                                        conversation_history.append((Current_time, "assistant: " + answer))
+                                    if self.push_to_talk_mode:
+                                        transcript_buffer += " " + transcript
+                                    else:
+                                        self.handle_transcript(transcript)
                     except StopIteration:
                         pass
                     except Exception as e:
@@ -136,48 +130,49 @@ class VoiceAssistant:
                         print("An error occurred:", e)
                         traceback.print_exc()
                         break
+
+            if self.push_to_talk_mode and transcript_buffer.strip():
+                self.handle_transcript(transcript_buffer.strip())
+
             self.stream.stop()
+        time.sleep(0.1)                  
 
-    def stop_recording(self):
-        if self.recording_thread is not None and self.recording_thread is not threading.current_thread():
-            self.toggle_event.set()
-            self.recording_thread.join()
-            self.recording_thread = None
-
-    def activation_listener(self, hotkey, keyword):
+    def activation_listener(self, hotkey, push_to_talk_hotkey):
         keyboard.add_hotkey(hotkey, self.toggle)
+        keyboard.add_hotkey(push_to_talk_hotkey, self.start_push_to_talk, suppress=True, trigger_on_release=False)
+        keyboard.add_hotkey(push_to_talk_hotkey, self.stop_push_to_talk, suppress=True, trigger_on_release=True)
 
-        activation_listener_thread = threading.Thread(target=self.activation_keyword_listener, args=(keyword,), daemon=True)
-        activation_listener_thread.start()
-        
-    def activation_keyword_listener(self, keyword):
-        r = sr.Recognizer()
-        r.energy_threshold = 1500
-        microphone = sr.Microphone()
-
-        while not self.stop_thread:
+    def start_push_to_talk(self):
+        with self.toggle_lock:
             if not self.listening:
-                activation_keyword = keyword.lower()
-                print("Listening for activation...")
-                try:
-                    with microphone as source:
-                        r.adjust_for_ambient_noise(source)
-                        audio = r.listen(source)
-                        if self.listening:
-                            continue
-                        print("Processing audio...")
+                self.listening = True
+                self.push_to_talk_mode = True
+                self.toggle_event.clear()
+                print("Push to talk key pressed")
+                
+    def stop_push_to_talk(self):
+        if self.listening and self.push_to_talk_mode:
+            self.listening = False
+            self.push_to_talk_mode = False
+            self.toggle_event.set()
+            print("Push to talk key released")
+        
+    def handle_transcript(self, transcript):
+        print(f"[{time.strftime('%H:%M:%S')}] Sent to OpenAI API")
+        Current_time = datetime.datetime.now()
+        insert_message(self.conn, str(Current_time), "user", transcript)
 
-                    recognized_text = r.recognize_sphinx(audio)
-                    print("Recognized text:", recognized_text)
+        answer = handle_question(transcript, conversation_history, self.conn, Current_time, date_answer=None)
+        audio_content = sythesize_speech(answer)
+        print("assistant:", answer)
+        self.is_speaking = True
+        play_speech_threaded(audio_content)
+        self.is_speaking = False
 
-                    if activation_keyword in recognized_text.lower():
-                        self.toggle()
+        Current_time = datetime.datetime.now()
+        insert_message(self.conn, str(Current_time), "assistant", answer)
+        conversation_history.append((Current_time, "assistant: " + answer))
 
-                except sr.UnknownValueError:
-                    pass
-                except sr.RequestError as e:
-                    print("Error occurred during sphinx recognition:", e)
-            time.sleep(0.1)
     def set_deactivation_keyword(keyword):
         global deactivation_keyword
         deactivation_keyword = keyword

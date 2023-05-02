@@ -17,6 +17,11 @@ def create_GUI(assistant):
             audio_file_path = sythesize_speech(response)
             play_speech_threaded(audio_file_path)
             response_label.config(text=response)
+            chat_box.config(state=tk.NORMAL)
+            chat_box.insert(tk.END, "User: " + query + "\n")
+            chat_box.insert(tk.END, "Assistant: " + response + "\n")
+            chat_box.config(state=tk.DISABLED)
+
             
     def shutdown():
         assistant.stop()
@@ -48,12 +53,15 @@ def create_GUI(assistant):
     def toggle_voice_activation():
         assistant.toggle()
     
-    def set_deactivation_keyword(keyword):
-        global deactivation_keyword
-        deactivation_keyword = keyword
-        print(f"Deactivation keyword set to '{keyword}'")
+    # def set_deactivation_keyword(keyword):
+    #     global deactivation_keyword
+    #     deactivation_keyword = keyword
+    #     print(f"Deactivation keyword set to '{keyword}'")
 
     def reset_chat():
+        chat_box.config(state=tk.NORMAL)
+        chat_box.delete('1.0', tk.END)
+        chat_box.config(state=tk.DISABLED)
         handle_question("Let's start fresh and forget everything we talked about before", assistant.conversation_history, assistant.conn, datetime.datetime.now(), date_answer=None)
         return
 
@@ -73,9 +81,14 @@ def create_GUI(assistant):
     response_label = ttk.Label(frame, textvariable=response_text)
     response_label.grid(row=3, column=0, sticky=tk.W)
 
+    # Chat box
+    chat_box = tk.Text(frame, height=10, width=50)
+    chat_box.config(state=tk.DISABLED)
+    chat_box.grid(row=6, column=0, sticky=tk.W)
+
     # Set deactivation keyword button
-    set_deactivation_keyword_button = ttk.Button(frame, text="Set Deactivation Keyword", command=set_deactivation_keyword)
-    set_deactivation_keyword_button.grid(row=6, column=0, sticky=tk.W)
+    # set_deactivation_keyword_button = ttk.Button(frame, text="Set Deactivation Keyword", command=set_deactivation_keyword)
+    # set_deactivation_keyword_button.grid(row=6, column=0, sticky=tk.W)
 
     # Reset chat button
     reset_chat_button = ttk.Button(frame, text="Reset Chat", command=reset_chat)
