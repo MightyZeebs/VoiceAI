@@ -58,6 +58,13 @@ def create_GUI(assistant):
     #     deactivation_keyword = keyword
     #     print(f"Deactivation keyword set to '{keyword}'")
 
+    def update_chat_box(user_text, assistant_text):
+        chat_box.config(state=tk.NORMAL)
+        chat_box.insert(tk.END, "User: " + user_text + "\n")
+        chat_box.insert(tk.END, "Assistant: " + assistant_text + "\n")
+        chat_box.config(state=tk.DISABLED)
+        root.update()
+
     def reset_chat():
         chat_box.config(state=tk.NORMAL)
         chat_box.delete('1.0', tk.END)
@@ -66,6 +73,7 @@ def create_GUI(assistant):
         return
 
     root = tk.Tk()
+    assistant.root = root
     root.title("Voice Assistant GUI")
 
     frame = ttk.Frame(root, padding="10")
@@ -104,4 +112,5 @@ def create_GUI(assistant):
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
 
+    root.update_chat_box = update_chat_box
     return root

@@ -5,7 +5,7 @@ def create_connection(db_file):
     #create a connection to the SQLite database
     conn = None
     try:
-        conn = sqlite3.connect('db_file', check_same_thread=False)
+        conn = sqlite3.connect(db_file, check_same_thread=False)
         print(f'Successfully connected to SQLite version {sqlite3.version}')
     except sqlite3.Error as e:
         print(e)

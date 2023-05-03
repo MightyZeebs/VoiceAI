@@ -19,6 +19,7 @@ conversation_history = []
 
 class VoiceAssistant:
     def __init__(self, deactivation_keyword="Jarvis stop"):
+        self.root = None
         self.device_index = sd.default.device[0]
         self.stop_thread = False
         self.toggle_event = threading.Event()
@@ -172,6 +173,7 @@ class VoiceAssistant:
         Current_time = datetime.datetime.now()
         insert_message(self.conn, str(Current_time), "assistant", answer)
         conversation_history.append((Current_time, "assistant: " + answer))
+        self.root.update_chat_box(transcript, answer)
 
     def set_deactivation_keyword(keyword):
         global deactivation_keyword
