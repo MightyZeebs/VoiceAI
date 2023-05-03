@@ -5,8 +5,14 @@ import threading
 import numpy as np
 import sys
 import uuid
+import requests
+from elevenlabs import generate, save
+from dotenv import load_dotenv
 from google.cloud import texttospeech 
 from .utils import audio_buffer
+
+load_dotenv()
+
 play_speech_event = threading.Event()
 
 def callback(indata, frames, time, status):
@@ -16,30 +22,25 @@ def callback(indata, frames, time, status):
     audio_buffer.put((indata.copy() * np.iinfo(np.int16).max).astype(np.int16))
 
 def sythesize_speech(text):
-    #text to speech using google
-    client = texttospeech.TextToSpeechClient()
+    api_key = os.environ.get("ELEVENLABS_API_KEY")
+    if api_key is None:
+        print("API key not found. Please set the ELEVENLABS_API_KEY environment variable.")
+        return
 
-    input_text = texttospeech.SynthesisInput(text=text)
-    voice = texttospeech.VoiceSelectionParams(
-        language_code="en-US",
-        ssml_gender=texttospeech.SsmlVoiceGender.MALE,
-        name="en-US-Standard-I"
-    )
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.LINEAR16
-    )
-    response = client.synthesize_speech(
-        input=input_text, voice=voice, audio_config=audio_config
-    )
+    voice = "Bella"
+    model = "eleven_monolingual_v1"
 
-    audio_file_name = f"audio_{uuid.uuid4().hex}.wav"
+    audio = generate(text, api_key=api_key, voice=voice, model=model)
+
+    audio_file_name = f"audio_{uuid.uuid4().hex}.mp3"
     audio_file_path = os.path.join("audio_files", audio_file_name)
-
+    
     with open(audio_file_path, "wb") as audio_file:
-        audio_file.write(response.audio_content)
-        print(f"saved audio to {audio_file_path}")
+        audio_file.write(audio)
+        print(f"Saved audio to {audio_file_path}")
 
     return audio_file_path
+
 
 def play_speech(audio_file_path, stop_event=None):
     # Set environment variable to hide the pygame support prompt
@@ -88,3 +89,30 @@ def play_speech(audio_file_path, stop_event=None):
 def play_speech_threaded(audio_file_path, stop_event=None):
     play_thread = threading.Thread(target=play_speech, args=(audio_file_path, stop_event), daemon=True)
     play_thread.start()
+
+    #GOING TO USE ELEVEN LABS INSTEAD 
+# def sythesize_speech(text):
+#     #text to speech using google
+#     client = texttospeech.TextToSpeechClient()
+
+#     input_text = texttospeech.SynthesisInput(text=text)
+#     voice = texttospeech.VoiceSelectionParams(
+#         language_code="en-US",
+#         ssml_gender=texttospeech.SsmlVoiceGender.MALE,
+#         name="en-US-Standard-I"
+#     )
+#     audio_config = texttospeech.AudioConfig(
+#         audio_encoding=texttospeech.AudioEncoding.LINEAR16
+#     )
+#     response = client.synthesize_speech(
+#         input=input_text, voice=voice, audio_config=audio_config
+#     )
+
+#     audio_file_name = f"audio_{uuid.uuid4().hex}.wav"
+#     audio_file_path = os.path.join("audio_files", audio_file_name)
+
+#     with open(audio_file_path, "wb") as audio_file:
+#         audio_file.write(response.audio_content)
+#         print(f"saved audio to {audio_file_path}")
+
+#     return audio_file_path
