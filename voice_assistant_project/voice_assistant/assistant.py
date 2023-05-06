@@ -11,7 +11,7 @@ from google.cloud import speech
 from voice_assistant.utils import audio_buffer
 from .database import create_connection, create_table, insert_message
 from .openai_integration import handle_question
-from .speech import sythesize_speech, play_speech_threaded, callback
+from .speech import synthesize_speech, play_speech_threaded, callback
 from threading import Lock
 
 device_index = None
@@ -164,7 +164,7 @@ class VoiceAssistant:
         insert_message(self.conn, str(Current_time), "user", transcript)
 
         answer = handle_question(transcript, conversation_history, self.conn, Current_time, date_answer=None)
-        audio_content = sythesize_speech(answer)
+        audio_content = synthesize_speech(answer)
         print("assistant:", answer)
         self.is_speaking = True
         play_speech_threaded(audio_content)
@@ -173,7 +173,8 @@ class VoiceAssistant:
         Current_time = datetime.datetime.now()
         insert_message(self.conn, str(Current_time), "assistant", answer)
         conversation_history.append((Current_time, "assistant: " + answer))
-        self.root.update_chat_box(transcript, answer)
+        if self.app is not None and self.app.root is not None:
+            self.app.root.update_chat_box(transcript, answer)
 
     def set_deactivation_keyword(keyword):
         global deactivation_keyword

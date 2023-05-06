@@ -1,0 +1,70 @@
+<VoiceAssistantUI>:
+    orientation: 'vertical'
+
+    MDTopAppBar:
+        title: "Futuristic Voice Assistant"
+        md_bg_color: app.theme_cls.primary_color
+
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_y: None
+        height: self.minimum_height
+
+        MDLabel:
+            text: 'Test Label'
+            halign: 'center'
+            size_hint_y: None
+            height: dp(40)
+            theme_text_color: 'Primary'
+
+        MDTextField:
+            id: user_input
+            hint_text: 'Type your query here'
+            size_hint_y: None
+            height: dp(40)
+            multiline: False
+            mode: "rectangle"
+            on_text_validate: root.process_query(self.text)
+
+
+        MDRaisedButton:
+            text: 'Submit'
+            size_hint_y: None
+            height: dp(40)
+            pos_hint: {"center_x": .5}
+            on_release: root.process_query(user_input.text)
+
+    ScrollView:
+        id: scroll_view
+
+        MDList:
+            id: output_container
+            padding: dp(10)
+            spacing: dp(10)
+
+            OneLineListItem:
+                text: "Welcome to the Futuristic Voice Assistant! Type your query below and hit 'Submit' to start the conversation."
+
+<TwoLineAvatarListItem>:
+    theme_text_color: 'Custom'
+    secondary_text_color: 1, 1, 1, 1
+    text_color: 1, 1, 1, 1
+    canvas.before:
+        Color:
+            rgba: (.2, .2, .2, 1)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [10]
+    IconLeftWidget:
+        icon: ''
+
+
+
+
+
+
+
+
+
+

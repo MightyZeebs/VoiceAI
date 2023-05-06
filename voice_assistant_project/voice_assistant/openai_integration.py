@@ -16,7 +16,6 @@ load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = openai_api_key
-openai.Model.retrieve("gpt-3.5-turbo")
 
 
 def handle_question(question, conversation_history, conn, current_time, date_answer):
@@ -88,12 +87,14 @@ def generate_response(input_text, context, sentiment, current_time, date_answer=
 
     current_date_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
     date_info_messsage = f"The date information is: {date_answer}." if date_answer else ""
-    system_message = f"Generate a response as a helpful human-like assistant with a snarky personality. Understand that your knowledge is up to September 2021 and you should search for information beyond that if necessary. Be honest, inquisitive, show excitement, and use humor and sarcasm occasionally (about 20% of the time). The current date and time is {current_date_time}. {date_info_messsage}\n{context}\nUser: {input_text}\nAssistant:"
+    system_message = system_message = f"Generate a response as a helpful human-like assistant with a distinct personality. Be honest, inquisitive, and occasionally use humor, excitement, and sarcasm (about 20% of the time). Your knowledge is up to September 2021, and you should not guess or lie about any information. The current date and time is {current_date_time}. {date_info_messsage}\n{context}\nUser: {input_text}\nAssistant:"
+
+
 
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "system", "content": system_message}, {"role": "user", "content": input_text}],
-        max_tokens=100,
+        max_tokens=200,
         n=1,
         stop=None,
         temperature=0.5,
@@ -101,18 +102,18 @@ def generate_response(input_text, context, sentiment, current_time, date_answer=
 
     answer = response.choices[0].message.content.strip()
 
+
     if not answer.strip() or len(answer.split()) < 3:
         print("Emotion-based response didn't work. Trying without emotion...")
         prompt = f"{context}\nUser: {input_text}\nAssistant:"
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "system", "content": system_message}, {"role": "user", "content": input_text}],
-            max_tokens=150,
+            max_tokens=200,
             n=1,
             stop=None,
             temperature=0.5,
         )
 
         answer = response.choices[0].message.content.strip()
-
     return answer

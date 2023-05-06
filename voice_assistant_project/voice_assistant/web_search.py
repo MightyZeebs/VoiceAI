@@ -193,7 +193,7 @@ def extract_text_from_pdf(url):
 #         print(f"URL: {url}\nSummary: {summary}\n")
 
 # Test the functionality of the code
-query = "what year was trump 20 years old"
+query = "where can I go canoeing near port st lucie FL"
 print("Question: ", query)
 num_results = 8
 keywords = extract_keywords(query)
