@@ -13,7 +13,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivymd.uix.list import OneLineListItem
 from kivy.factory import Factory
 from kivy.clock import Clock
-
+from kivy.uix.label import Label
+from kivy.metrics import dp
 
 class VoiceAssistantUI(BoxLayout):
     def __init__(self, app, **kwargs):
@@ -31,14 +32,17 @@ class VoiceAssistantUI(BoxLayout):
 
     def update_chat_box(self, user_message, assistant_message):
         def update(dt):
-            self.ids.output_container.add_widget(
-                OneLineListItem(text=f"user: {user_message}")
-            )
-            self.ids.output_container.add_widget(
-                OneLineListItem(text=f"assistant: {assistant_message}")
-            )
+            if self.ids.welcome_message.parent is not None:
+                self.ids.output_container.remove_widget(self.ids.welcome_message)
+
+            user_message_item = Factory.WrappedLabel(text=f"User: {user_message}")
+            assistant_message_item = Factory.WrappedLabel(text=f"Assistant: {assistant_message}")
+
+            self.ids.output_container.add_widget(user_message_item)
+            self.ids.output_container.add_widget(assistant_message_item)
 
         Clock.schedule_once(update, 0)
+
 
 class VoiceAssistantApp(MDApp):
     def __init__(self, assistant, **kwargs):

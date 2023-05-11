@@ -4,6 +4,7 @@ import PyPDF2
 import os
 from bs4 import BeautifulSoup
 import spacy
+import urllib.parse
 from dotenv import load_dotenv
 from io import BytesIO
 from nltk.corpus import stopwords
@@ -67,20 +68,15 @@ def google_search(query, num_results=1):
     featured_snippet = None
     knowledge_panel = None
     try:
-        params = {
-            "q": query,
-            "hl": "en",  # language
-            "gl": "us",  # country of the search, US -> USA
-            "num": num_results,
-        }
+        base_url = "https://www.google.com/search?q=" + urllib.parse.quote_plus(query)
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         }
-        html = requests.get("https://www.google.com/search", params=params, headers=headers, timeout=30)
-        soup = BeautifulSoup(html.text, "lxml")
+        response = requests.get(base_url, headers=headers)
+        soup = BeautifulSoup(response.content, "html.parser")
         
         # Extract featured snippet
-        featured_snippet = soup.select_one("span.hgKElc")
+        featured_snippet = soup.find("div", class_="xpdopen")
         if featured_snippet:
             featured_snippet = featured_snippet.text
 
@@ -145,10 +141,17 @@ def filter_and_summarize_text(text_data, keywords, max_summaries=3):
     summaries = []
     for idx, (url, text, _) in enumerate(sorted_urls[:max_summaries]):
         inputs = tokenizer("summarize: " + text, max_length=1024, return_tensors='pt', truncation=True)
-        summary_ids = model.generate(inputs['input_ids'], num_beams=6, max_length=800, early_stopping=True)
+        summary_ids = model.generate(inputs['input_ids'], num_beams=6, max_length=1200, early_stopping=True)
         summarized_text = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-        summaries.append((url, summarized_text))
-        print(f"Generated Summary for URL {idx+1}: {url}\nSummary: {summarized_text}\n")
+        
+        # Generate a second summary with a different range of the text and concatenate
+        inputs = tokenizer("summarize: " + text[-1024:], max_length=1024, return_tensors='pt', truncation=True)
+        summary_ids = model.generate(inputs['input_ids'], num_beams=6, max_length=1200, early_stopping=True)
+        summarized_text2 = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        combined_summary = summarized_text + " " + summarized_text2
+        
+        summaries.append((url, combined_summary))
+        print(f"Generated Summary for URL {idx+1}: {url}\nSummary: {combined_summary}\n")
 
     return summaries
 
@@ -193,34 +196,44 @@ def extract_text_from_pdf(url):
 #         print(f"URL: {url}\nSummary: {summary}\n")
 
 # Test the functionality of the code
-query = "where can I go canoeing near port st lucie FL"
-print("Question: ", query)
-num_results = 8
-keywords = extract_keywords(query)
-print("Extracted keywords: ", keywords)
+# Test the functionality of the code
+# query = "What is the best gun in the new call of duty"
+# print("Question: ", query)
+# num_results = 8
+# keywords = extract_keywords(query)
+# print("Extracted keywords: ", keywords)
 
-# Use Google Search
-urls, featured_snippet, knowledge_panel = google_search(query, num_results=num_results)
+# # Use Google Search
+# urls, featured_snippet, knowledge_panel = google_search(query, num_results=num_results)
 
-if featured_snippet:
-    print(f"Featured Snippet: {featured_snippet}\n")
-else:
-    print("No featured snippet found.\n")
+# if featured_snippet:
+#     print(f"Google Featured Snippet: {featured_snippet}\n")
+# else:
+#     print("No Google featured snippet found.\n")
 
-if knowledge_panel:
-    print("Knowledge panel:")
-    print(knowledge_panel)
-else:
-    print("No knowledge panel found.\n")
+# if knowledge_panel:
+#     print("Google Knowledge panel:")
+#     print(knowledge_panel)
+# else:
+#     print("No Google knowledge panel found.\n")
 
-print("Retrieved URLs:", urls)
+# # Use Bing Search
+# bing_results, bing_top_snippet = bing_search(query, num_results=num_results)
 
-text_data = scrape_and_extract_text(urls, max_successful=3)
-print("text data scraped")
-summaries = filter_and_summarize_text(text_data, keywords)
-print("Summaries:")
-for url, summary in summaries:
-    print(f"URL: {url}\nSummary: {summary}\n")
+# if bing_top_snippet:
+#     print(f"Bing Top Snippet: {bing_top_snippet}\n")
+# else:
+#     print("No Bing top snippet found.\n")
+
+# print("Retrieved URLs:", urls)
+
+# text_data = scrape_and_extract_text(urls, max_successful=3)
+# print("text data scraped")
+# summaries = filter_and_summarize_text(text_data, keywords)
+# print("Summaries:")
+# for url, summary in summaries:
+#     print(f"URL: {url}\nSummary: {summary}\n")
+
 
 #print("Testing follow-up query:")
 # summary_number = 3  # Replace this with the spoken input once integrated with the voice assistant

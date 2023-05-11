@@ -5,10 +5,33 @@ from textblob import TextBlob
 import datetime
 import re
 import spacy
+import pickle
 from dotenv import load_dotenv
 from .calender_integration import get_calendar_service, get_date_info, create_reminder
 from .database import insert_message, retrieve_database_history
 from .nlp_processing import extract_keywords, search_conversation_history, remove_duplicates
+from .web_search import bing_search, google_search
+from sklearn.feature_extraction.text import CountVectorizer
+import joblib
+import os
+import openai
+import os
+import datetime
+from textblob import TextBlob
+import datetime
+import re
+import spacy
+import pickle
+from dotenv import load_dotenv
+from .calender_integration import get_calendar_service, get_date_info, create_reminder
+from .database import insert_message, retrieve_database_history
+from .nlp_processing import extract_keywords, search_conversation_history, remove_duplicates
+from .web_search import bing_search, google_search
+from sklearn.feature_extraction.text import CountVectorizer
+import joblib
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -53,27 +76,82 @@ def handle_question(question, conversation_history, conn, current_time, date_ans
             print(f"Error in date answer: {e}")
 
     unique_conversation_history = remove_duplicates(conversation_history)
-
     #print("Unique conversation history: ", unique_conversation_history)
-
     history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in unique_conversation_history)
     print("history_str:  ", history_str)
+
     sentiment = analyze_sentiment(question)
+
+# Check if the query starts with "web search needed:"
+    if question.lower().startswith("web search needed:"):
+        print("web search needed detected")
+        # Generate a new query using OpenAI
+        new_query = generate_web_search_query(question, history_str)
+        
+        # Pass the new query to your web search function
+        search_result = combined_web_search(new_query)
+        
+        # Send the search result back to OpenAI for a final response
+        answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
+        return answer  # Return the answer early, skipping the rest of the function
     
     answer = generate_response(question, history_str, sentiment, current_time, date_answer)
 
     if not answer.strip():
         answer = "I'm sorry, I couldn't understand your question. Please try again."
     else:
+        insert_message(conn, current_time, "assistant", answer)
         unique_conversation_history.append((current_time, "Assistant: " + answer))
 
     return answer
+
+def combined_web_search(query):
+    bing_results, bing_top_snippet = bing_search(query)
+    google_results, google_featured_snippet, google_knowledge_panel = google_search(query)
+
+    search_result = ""
+    if google_featured_snippet:
+        search_result += f"Google Featured Snippet: {google_featured_snippet}\n"
+    if google_knowledge_panel:
+        search_result += f"Google Knowledge Panel: {google_knowledge_panel}\n"
+    if bing_top_snippet:
+        search_result += f"Bing Top Snippet: {bing_top_snippet}\n"
+
+    search_result += "Google URLs:\n"
+    for url in google_results:
+        search_result += f"{url}\n"
+
+    search_result += "Bing URLs:\n"
+    for url in bing_results:
+        search_result += f"{url}\n"
+
+    return search_result
+
 
 
 def analyze_sentiment(input_text):
     blob = TextBlob(input_text)
     sentiment = blob.sentiment.polarity
     return sentiment
+
+def generate_web_search_query(input_text, context):
+    system_message = "Reword the user's query for a more efficient web search."
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "assistant", "content": context},
+            {"role": "user", "content": input_text}
+        ],
+        max_tokens=50,
+        n=1,
+        stop=None,
+        temperature=0.5,
+    )
+
+    new_query = response.choices[0].message.content.strip()
+    print("new query: ", new_query)
+    return new_query
 
 
 def generate_response(input_text, context, sentiment, current_time, date_answer=None):

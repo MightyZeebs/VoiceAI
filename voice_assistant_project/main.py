@@ -1,5 +1,5 @@
 from voice_assistant.assistant import VoiceAssistant
-from voice_assistant.utils import delete_audio_files
+from voice_assistant.utils import delete_audio_files, load_model, load_data, preprocess_text, predict_question
 from gui import VoiceAssistantApp
 import threading
 

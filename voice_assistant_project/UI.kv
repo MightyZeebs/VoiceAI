@@ -26,7 +26,6 @@
             mode: "rectangle"
             on_text_validate: root.process_query(self.text)
 
-
         MDRaisedButton:
             text: 'Submit'
             size_hint_y: None
@@ -41,14 +40,31 @@
             id: output_container
             padding: dp(10)
             spacing: dp(10)
+            size_hint_y: None
+            height: self.minimum_height
 
-            OneLineListItem:
+            Label:
+                id: welcome_message
                 text: "Welcome to the Futuristic Voice Assistant! Type your query below and hit 'Submit' to start the conversation."
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: (self.width - dp(20), None)
+                padding: (dp(10), dp(10))
+                markup: True
+                canvas.before:
+                    Color:
+                        rgba: (.2, .2, .2, 1)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10]
 
-<TwoLineAvatarListItem>:
-    theme_text_color: 'Custom'
-    secondary_text_color: 1, 1, 1, 1
-    text_color: 1, 1, 1, 1
+<WrappedLabel@Label>:
+    size_hint_y: None
+    height: self.texture_size[1]
+    text_size: (self.width - dp(20), None)
+    padding: (dp(10), dp(10))
+    markup: True
     canvas.before:
         Color:
             rgba: (.2, .2, .2, 1)
@@ -56,6 +72,7 @@
             pos: self.pos
             size: self.size
             radius: [10]
+
     IconLeftWidget:
         icon: ''
 
