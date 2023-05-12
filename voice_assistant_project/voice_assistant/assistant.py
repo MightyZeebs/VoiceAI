@@ -161,7 +161,7 @@ class VoiceAssistant:
     def handle_transcript(self, transcript):
         print(f"[{time.strftime('%H:%M:%S')}] Sent to OpenAI API")
         Current_time = datetime.datetime.now()
-        insert_message(self.conn, str(Current_time), "user", transcript)
+        #insert_message(self.conn, str(Current_time), "user", transcript)
 
         answer = handle_question(transcript, conversation_history, self.conn, Current_time, date_answer=None)
         audio_content = synthesize_speech(answer)
@@ -170,8 +170,6 @@ class VoiceAssistant:
         play_speech_threaded(audio_content)
         self.is_speaking = False
 
-        Current_time = datetime.datetime.now()
-        insert_message(self.conn, str(Current_time), "assistant", answer)
         conversation_history.append((Current_time, "assistant: " + answer))
         if self.app is not None and self.app.root is not None:
             self.app.root.update_chat_box(transcript, answer)
