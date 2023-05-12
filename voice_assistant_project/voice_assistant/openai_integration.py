@@ -1,35 +1,23 @@
 import openai
 import os
 import datetime
-from textblob import TextBlob
-import datetime
 import re
 import spacy
 import pickle
+import joblib
 from dotenv import load_dotenv
 from .calender_integration import get_calendar_service, get_date_info, create_reminder
 from .database import insert_message, retrieve_database_history
 from .nlp_processing import extract_keywords, search_conversation_history, remove_duplicates
 from .web_search import bing_search, google_search
 from sklearn.feature_extraction.text import CountVectorizer
-import joblib
-import os
-import openai
-import os
-import datetime
-from textblob import TextBlob
-import datetime
-import re
-import spacy
-import pickle
 from dotenv import load_dotenv
 from .calender_integration import get_calendar_service, get_date_info, create_reminder
 from .database import insert_message, retrieve_database_history
 from .nlp_processing import extract_keywords, search_conversation_history, remove_duplicates
 from .web_search import bing_search, google_search
 from sklearn.feature_extraction.text import CountVectorizer
-import joblib
-import os
+from textblob import TextBlob
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -39,6 +27,16 @@ load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = openai_api_key
+
+
+
+# Load the model and vectorizer
+current_dir = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(current_dir, "model.pkl")
+vectorizer_path = os.path.join(current_dir, "vectorizer.pkl")
+
+model = joblib.load(model_path)
+vectorizer = joblib.load(vectorizer_path)
 
 
 def handle_question(question, conversation_history, conn, current_time, date_answer):
@@ -60,6 +58,7 @@ def handle_question(question, conversation_history, conn, current_time, date_ans
     #check for date related question
     doc = nlp(question)
     date_detected = False
+    date_answer = None
     date_keywords = ['date', 'day', 'today', "tomorrow", "yesterday"]
     for token in doc:
         if token.lower_ in date_keywords:
@@ -79,8 +78,35 @@ def handle_question(question, conversation_history, conn, current_time, date_ans
     #print("Unique conversation history: ", unique_conversation_history)
     history_str = "\n".join(f"{entry[1]}: {entry[2]}" for entry in unique_conversation_history)
     print("history_str:  ", history_str)
-
     sentiment = analyze_sentiment(question)
+
+ # Prepare the question for classification
+    question_vector = vectorizer.transform([question])
+
+    # Use the model to predict if the question requires post-2021 knowledge
+    requires_web_search = model.predict(question_vector)[0]
+
+    if requires_web_search:
+        print("Web search required according to the model.")
+        # ... your code ...
+    else:
+        print("Web search not required according to the model.")
+
+    # If the model predicts that the question requires post-2021 knowledge, trigger web search
+    if requires_web_search:
+        print("Web search required")
+        # Generate a new query using OpenAI
+        new_query = generate_web_search_query(question, history_str)
+        
+        # Pass the new query to your web search function
+        search_result = combined_web_search(new_query)
+        
+        # Send the search result back to OpenAI for a final response
+        answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
+        return answer  # Return the answer early, skipping the rest of the function
+
+
+    
 
 # Check if the query starts with "web search needed:"
     if question.lower().startswith("web search needed:"):
@@ -94,7 +120,7 @@ def handle_question(question, conversation_history, conn, current_time, date_ans
         # Send the search result back to OpenAI for a final response
         answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
         return answer  # Return the answer early, skipping the rest of the function
-    
+    print("generating response")
     answer = generate_response(question, history_str, sentiment, current_time, date_answer)
 
     if not answer.strip():
@@ -106,6 +132,7 @@ def handle_question(question, conversation_history, conn, current_time, date_ans
     return answer
 
 def combined_web_search(query):
+    print("Performing web search")
     bing_results, bing_top_snippet = bing_search(query)
     google_results, google_featured_snippet, google_knowledge_panel = google_search(query)
 
@@ -130,23 +157,25 @@ def combined_web_search(query):
 
 
 def analyze_sentiment(input_text):
+    print("analyzing sentiment")
     blob = TextBlob(input_text)
     sentiment = blob.sentiment.polarity
     return sentiment
 
 def generate_web_search_query(input_text, context):
-    system_message = "Reword the user's query for a more efficient web search."
+    print("Generating web search query...")
+    system_message = "You are an assistant that rephrases user queries into more effective web search queries. Your goal is not to answer the questions directly, but to transform them into optimal search queries."
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": system_message},
             {"role": "assistant", "content": context},
-            {"role": "user", "content": input_text}
+            {"role": "user", "content": f"Transform this question into a web search query: '{input_text}'"}
         ],
         max_tokens=50,
         n=1,
         stop=None,
-        temperature=0.5,
+        temperature=0.3,
     )
 
     new_query = response.choices[0].message.content.strip()
@@ -155,6 +184,7 @@ def generate_web_search_query(input_text, context):
 
 
 def generate_response(input_text, context, sentiment, current_time, date_answer=None):
+    print("Generating response based on input and context...")
     emotion = (
         "sad"
         if sentiment < -0.2 
