@@ -138,10 +138,12 @@ def combined_web_search(query):
 
     search_result = ""
     if google_featured_snippet:
+        print("google snippet: ", google_featured_snippet)
         search_result += f"Google Featured Snippet: {google_featured_snippet}\n"
     if google_knowledge_panel:
         search_result += f"Google Knowledge Panel: {google_knowledge_panel}\n"
     if bing_top_snippet:
+        print("bing top snippet", bing_top_snippet)
         search_result += f"Bing Top Snippet: {bing_top_snippet}\n"
 
     search_result += "Google URLs:\n"

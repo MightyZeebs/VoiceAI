@@ -96,47 +96,47 @@ class VoiceAssistant:
             transcript_buffer = ""
 
             while self.listening and (not self.push_to_talk_mode or not self.toggle_event.is_set()):
-                    elapsed_time = time.time() - start_time
+                elapsed_time = time.time() - start_time
 
-                    if elapsed_time > 290:
-                        if not self.is_speaking:
-                            break
-
-                    requests = self.audio_generator()
-                    responses = self.client.streaming_recognize(self.streaming_config, requests=requests)
-                    response_iterator = iter(responses)
-
-                    try:
-                        for response in response_iterator:
-                            if not response.results:
-                                print("No transcription results found.")
-                            else:
-                                result = response.results[-1]
-                                if result.is_final:
-                                    transcript = result.alternatives[0].transcript
-                                    print("user:", transcript)
-
-                                    if self.deactivation_keyword.lower() in transcript.lower():
-                                        self.toggle()
-                                        break
-
-                                    if self.push_to_talk_mode:
-                                        transcript_buffer += " " + transcript
-                                    else:
-                                        self.handle_transcript(transcript)
-                    except StopIteration:
-                        pass
-                    except Exception as e:
-                        import traceback
-                        print("An error occurred:", e)
-                        traceback.print_exc()
+                if elapsed_time > 290:
+                    if not self.is_speaking:
                         break
 
-            if self.push_to_talk_mode and transcript_buffer.strip():
+                requests = self.audio_generator()
+                responses = self.client.streaming_recognize(self.streaming_config, requests=requests)
+                response_iterator = iter(responses)
+
+                try:
+                    for response in response_iterator:
+                        if not response.results:
+                            print("No transcription results found.")
+                        else:
+                            result = response.results[-1]
+                            if result.is_final:
+                                transcript = result.alternatives[0].transcript
+                                print("user:", transcript)
+
+                                if self.deactivation_keyword.lower() in transcript.lower():
+                                    self.toggle()
+                                    break
+
+                                if self.push_to_talk_mode:
+                                    transcript_buffer += " " + transcript
+                                else:
+                                    self.handle_transcript(transcript)
+                except StopIteration:
+                    pass
+                except Exception as e:
+                    import traceback
+                    print("An error occurred:", e)
+                    traceback.print_exc()
+                    break
+
+            if transcript_buffer.strip():
                 self.handle_transcript(transcript_buffer.strip())
 
             self.stream.stop()
-        time.sleep(0.1)                  
+                  
 
     def activation_listener(self, hotkey, push_to_talk_hotkey):
         keyboard.add_hotkey(hotkey, self.toggle)
@@ -161,7 +161,6 @@ class VoiceAssistant:
     def handle_transcript(self, transcript):
         print(f"[{time.strftime('%H:%M:%S')}] Sent to OpenAI API")
         Current_time = datetime.datetime.now()
-        #insert_message(self.conn, str(Current_time), "user", transcript)
 
         answer = handle_question(transcript, conversation_history, self.conn, Current_time, date_answer=None)
         audio_content = synthesize_speech(answer)
