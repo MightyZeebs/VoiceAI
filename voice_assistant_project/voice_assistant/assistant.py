@@ -162,7 +162,7 @@ class VoiceAssistant:
         print(f"[{time.strftime('%H:%M:%S')}] Sent to OpenAI API")
         Current_time = datetime.datetime.now()
 
-        answer = handle_question(transcript, conversation_history, self.conn, Current_time)
+        answer = handle_question(transcript, self.conn, Current_time, self.app.root)
         audio_content = synthesize_speech(answer)
         print("assistant:", answer)
         self.is_speaking = True

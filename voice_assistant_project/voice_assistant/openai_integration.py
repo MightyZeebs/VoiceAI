@@ -33,6 +33,9 @@ reset_timestamp = None #variable timestamp for ignoring all database chat histor
 def handle_question(question, conn, current_time, ui):
     global reset_timestamp, conversation_history
     current_time = datetime.datetime.now()
+    print(type(conn))
+    print(type(current_time))
+    print(f"conn is: {conn}")
     insert_message(conn, current_time, "user", question)
 
     recall_phrases = ["remember when", "recall", "search for"]

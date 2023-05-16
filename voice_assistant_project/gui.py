@@ -32,7 +32,9 @@ class VoiceAssistantUI(BoxLayout):
             self.ids.user_input.text = ""
   
     def clear_chat_box(self):
-        self.ids.output_container.clear_widgets()
+        def clear(dt):
+            self.ids.output_container.clear_widgets()
+        Clock.schedule_once(clear)
 
     def update_chat_box(self, user_message, assistant_message):
         def update(dt):
@@ -44,7 +46,7 @@ class VoiceAssistantUI(BoxLayout):
 
             self.ids.output_container.add_widget(user_message_item)
             self.ids.output_container.add_widget(assistant_message_item)
-
+            
         Clock.schedule_once(update, 0)
 
 

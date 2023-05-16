@@ -33,6 +33,7 @@ def initialize_database():
 def insert_message(conn, timestamp, speaker, text):
     #insert a message into the conversation history table
     try:
+        print(type(conn))
         c = conn.cursor()
         c.execute("INSERT INTO conversation_history (timestamp, speaker, text) VALUES (?, ?, ?)", (timestamp, speaker, text))
         conn.commit()
