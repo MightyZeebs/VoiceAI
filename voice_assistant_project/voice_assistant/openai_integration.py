@@ -11,12 +11,6 @@ from .database import insert_message, retrieve_database_history
 from .nlp_processing import extract_keywords, search_conversation_history, remove_duplicates
 from .web_search import bing_search, google_search
 from sklearn.feature_extraction.text import CountVectorizer
-from dotenv import load_dotenv
-from .calender_integration import get_calendar_service, get_date_info, create_reminder
-from .database import insert_message, retrieve_database_history
-from .nlp_processing import extract_keywords, search_conversation_history, remove_duplicates
-from .web_search import bing_search, google_search
-from sklearn.feature_extraction.text import CountVectorizer
 from textblob import TextBlob
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,19 +21,17 @@ load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = openai_api_key
-
-
-
 # Load the model and vectorizer
 current_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(current_dir, "model.pkl")
 vectorizer_path = os.path.join(current_dir, "vectorizer.pkl")
-
+conversation_history = []
 model = joblib.load(model_path)
 vectorizer = joblib.load(vectorizer_path)
+reset_timestamp = None #variable timestamp for ignoring all database chat history from before this button 
 
-
-def handle_question(question, conversation_history, conn, current_time, date_answer):
+def handle_question(question, conn, current_time, ui):
+    global reset_timestamp, conversation_history
     current_time = datetime.datetime.now()
     insert_message(conn, current_time, "user", question)
 
@@ -50,10 +42,13 @@ def handle_question(question, conversation_history, conn, current_time, date_ans
         print("Recall phrase detected")
         keywords = extract_keywords(question, recall_phrases)
         print(f"Keywords: {keywords}")
-        conversation_history = search_conversation_history(retrieve_database_history(conn, recall=True), keywords)      
+        conversation_history = search_conversation_history(retrieve_database_history(conn, recall=True), keywords)
+    elif "reset chat" in question.lower():
+        reset_timestamp = current_time  # Update the reset timestamp when the chat is reset
+        conversation_history = []  # Reset conversation_history
+        ui.clear_chat_box()  # Clear the chatbox in the UI
     else:
-        conversation_history = retrieve_database_history(conn, minutes=5)
-
+        conversation_history = retrieve_database_history(conn, reset_timestamp=reset_timestamp)
     
     #check for date related question
     doc = nlp(question)
@@ -104,9 +99,6 @@ def handle_question(question, conversation_history, conn, current_time, date_ans
         # Send the search result back to OpenAI for a final response
         answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
         return answer  # Return the answer early, skipping the rest of the function
-
-
-    
 
 # Check if the query starts with "web search needed:"
     if question.lower().startswith("web search needed:"):

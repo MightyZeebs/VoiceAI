@@ -10,12 +10,12 @@ import speech_recognition as sr
 from google.cloud import speech
 from voice_assistant.utils import audio_buffer
 from .database import create_connection, create_table, insert_message
-from .openai_integration import handle_question
+from .openai_integration import handle_question, conversation_history
 from .speech import synthesize_speech, play_speech_threaded, callback
 from threading import Lock
 
 device_index = None
-conversation_history = []
+#conversation_history = []
 
 class VoiceAssistant:
     def __init__(self, deactivation_keyword="Jarvis stop"):
@@ -162,7 +162,7 @@ class VoiceAssistant:
         print(f"[{time.strftime('%H:%M:%S')}] Sent to OpenAI API")
         Current_time = datetime.datetime.now()
 
-        answer = handle_question(transcript, conversation_history, self.conn, Current_time, date_answer=None)
+        answer = handle_question(transcript, conversation_history, self.conn, Current_time)
         audio_content = synthesize_speech(answer)
         print("assistant:", answer)
         self.is_speaking = True

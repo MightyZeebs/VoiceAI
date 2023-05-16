@@ -23,12 +23,16 @@ class VoiceAssistantUI(BoxLayout):
 
     def process_query(self, query):
         if query:
+            print("User: ", query)
             current_time = datetime.datetime.now()
-            response = handle_question(query, self.app.assistant.conversation_history, self.app.assistant.conn, current_time, date_answer=None)
+            response = handle_question(query, self.app.assistant.conn, current_time, self)
             audio_file_path = synthesize_speech(response)
             play_speech_threaded(audio_file_path)
             self.update_chat_box(query, response)
             self.ids.user_input.text = ""
+  
+    def clear_chat_box(self):
+        self.ids.output_container.clear_widgets()
 
     def update_chat_box(self, user_message, assistant_message):
         def update(dt):
@@ -52,7 +56,7 @@ class VoiceAssistantApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Blue"
         Window.clearcolor = (0.1, 0.1, 0.1, 1)
-        print(f"Loading .kv code")
+        #print(f"Loading .kv code")
         
         # Load the kv file first
         kv_file_path = os.path.join(os.path.dirname(__file__), 'ui.kv')
@@ -61,7 +65,7 @@ class VoiceAssistantApp(MDApp):
         # Then create an instance of VoiceAssistantUI
         voice_assistant_ui = VoiceAssistantUI(self)
         voice_assistant_ui.assistant = self.assistant
-        print("KV code loaded successfully")
+        #print("KV code loaded successfully")
         return voice_assistant_ui
 
     def process_query(self, query):
