@@ -21,7 +21,6 @@ load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = openai_api_key
-# Load the model and vectorizer
 current_dir = os.path.dirname(os.path.abspath(__file__))
 model_path = os.path.join(current_dir, "model.pkl")
 vectorizer_path = os.path.join(current_dir, "vectorizer.pkl")
@@ -78,17 +77,13 @@ def handle_question(question, conn, current_time, ui):
     print("history_str:  ", history_str)
     sentiment = analyze_sentiment(question)
 
- # Prepare the question for classification
-    question_vector = vectorizer.transform([question])
+    requires_web_search = False
 
-    # Use the model to predict if the question requires post-2021 knowledge
-    requires_web_search = model.predict(question_vector)[0]
-
-    if requires_web_search:
-        print("Web search required according to the model.")
-        # ... your code ...
-    else:
-        print("Web search not required according to the model.")
+    if not conversation_history:
+        question_vector = vectorizer.transform([question])
+        requires_web_search = model.predict(question_vector)[0]
+    elif "web search needed" in question.lower():
+        requires_web_search = True
 
     # If the model predicts that the question requires post-2021 knowledge, trigger web search
     if requires_web_search:
@@ -101,20 +96,22 @@ def handle_question(question, conn, current_time, ui):
         
         # Send the search result back to OpenAI for a final response
         answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
-        return answer  # Return the answer early, skipping the rest of the function
+        return answer 
+    else:
+        print("Web search not required")
 
 # Check if the query starts with "web search needed:"
-    if question.lower().startswith("web search needed:"):
-        print("web search needed detected")
-        # Generate a new query using OpenAI
-        new_query = generate_web_search_query(question, history_str)
+    # if question.lower().startswith("web search needed:"):
+    #     print("web search needed detected")
+    #     # Generate a new query using OpenAI
+    #     new_query = generate_web_search_query(question, history_str)
         
-        # Pass the new query to your web search function
-        search_result = combined_web_search(new_query)
+    #     # Pass the new query to your web search function
+    #     search_result = combined_web_search(new_query)
         
-        # Send the search result back to OpenAI for a final response
-        answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
-        return answer  # Return the answer early, skipping the rest of the function
+    #     # Send the search result back to OpenAI for a final response
+    #     answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
+    #     return answer  # Return the answer early, skipping the rest of the function
     print("generating response")
     answer = generate_response(question, history_str, sentiment, current_time, date_answer)
 

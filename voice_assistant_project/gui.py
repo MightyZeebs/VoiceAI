@@ -15,6 +15,9 @@ from kivy.factory import Factory
 from kivy.clock import Clock
 from kivy.uix.label import Label
 from kivy.metrics import dp
+from kivy.config import Config
+
+Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 class VoiceAssistantUI(BoxLayout):
     def __init__(self, app, **kwargs):
@@ -46,8 +49,11 @@ class VoiceAssistantUI(BoxLayout):
 
             self.ids.output_container.add_widget(user_message_item)
             self.ids.output_container.add_widget(assistant_message_item)
-            
+            Clock.schedule_once(lambda dt: self.ids.scroll_view.scroll_to(user_message_item), 0.1)
+            self.ids.scroll_view.scroll_to(user_message_item)
+
         Clock.schedule_once(update, 0)
+
 
 
 class VoiceAssistantApp(MDApp):
