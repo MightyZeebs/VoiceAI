@@ -32,6 +32,14 @@
             height: dp(40)
             pos_hint: {"center_x": .5}
             on_release: root.process_query(user_input.text)
+            
+        MDRaisedButton:
+            text: 'Reset'
+            size_hint_y: None
+            height: dp(40)
+            pos_hint: {"center_x": .5}
+            on_release: root.reset_chat()
+
 
     ScrollView:
         id: scroll_view

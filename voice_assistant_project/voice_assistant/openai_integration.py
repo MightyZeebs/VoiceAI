@@ -49,6 +49,7 @@ def handle_question(question, conn, current_time, ui):
         reset_timestamp = current_time  # Update the reset timestamp when the chat is reset
         conversation_history = []  # Reset conversation_history
         ui.clear_chat_box()  # Clear the chatbox in the UI
+        return "Chat has been reset."
     else:
         conversation_history = retrieve_database_history(conn, reset_timestamp=reset_timestamp)
     
@@ -80,6 +81,7 @@ def handle_question(question, conn, current_time, ui):
     requires_web_search = False
 
     if not conversation_history:
+        print("checking for web search question")
         question_vector = vectorizer.transform([question])
         requires_web_search = model.predict(question_vector)[0]
     elif "web search needed" in question.lower():
@@ -147,8 +149,6 @@ def combined_web_search(query):
         search_result += f"{url}\n"
 
     return search_result
-
-
 
 def analyze_sentiment(input_text):
     print("analyzing sentiment")

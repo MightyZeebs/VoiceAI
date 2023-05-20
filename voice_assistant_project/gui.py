@@ -25,19 +25,36 @@ class VoiceAssistantUI(BoxLayout):
         self.app = app
 
     def process_query(self, query):
-        if query:
-            print("User: ", query)
+        if query:  # Only process the query if it's not empty
             current_time = datetime.datetime.now()
-            response = handle_question(query, self.app.assistant.conn, current_time, self)
-            audio_file_path = synthesize_speech(response)
-            play_speech_threaded(audio_file_path)
-            self.update_chat_box(query, response)
-            self.ids.user_input.text = ""
+            if query.lower() == "reset chat":
+                self.reset_chat()
+                assistant_message = "Chat has been successfully reset."
+                audio_file_path = synthesize_speech(assistant_message)
+                play_speech_threaded(audio_file_path)
+                self.update_chat_box("", assistant_message)
+            else:
+                print("User: ", query)
+                response = handle_question(query, self.app.assistant.conn, current_time, self)
+                audio_file_path = synthesize_speech(response)
+                play_speech_threaded(audio_file_path)
+                self.update_chat_box(query, response)
+        self.ids.user_input.text = ""
   
     def clear_chat_box(self):
         def clear(dt):
             self.ids.output_container.clear_widgets()
         Clock.schedule_once(clear)
+
+    def reset_chat(self):
+        self.clear_chat_box()
+        current_time = datetime.datetime.now()
+        handle_question("reset chat", self.app.assistant.conn, current_time, self)
+        assistant_message = "Chat has been successfully reset."
+        audio_file_path = synthesize_speech(assistant_message)
+        play_speech_threaded(audio_file_path)
+        self.update_chat_box("", assistant_message)
+
 
     def update_chat_box(self, user_message, assistant_message):
         def update(dt):
@@ -53,8 +70,6 @@ class VoiceAssistantUI(BoxLayout):
             self.ids.scroll_view.scroll_to(user_message_item)
 
         Clock.schedule_once(update, 0)
-
-
 
 class VoiceAssistantApp(MDApp):
     def __init__(self, assistant, **kwargs):
