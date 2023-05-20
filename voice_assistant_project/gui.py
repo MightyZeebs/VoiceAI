@@ -29,10 +29,6 @@ class VoiceAssistantUI(BoxLayout):
             current_time = datetime.datetime.now()
             if query.lower() == "reset chat":
                 self.reset_chat()
-                assistant_message = "Chat has been successfully reset."
-                audio_file_path = synthesize_speech(assistant_message)
-                play_speech_threaded(audio_file_path)
-                self.update_chat_box("", assistant_message)
             else:
                 print("User: ", query)
                 response = handle_question(query, self.app.assistant.conn, current_time, self)
@@ -55,21 +51,22 @@ class VoiceAssistantUI(BoxLayout):
         play_speech_threaded(audio_file_path)
         self.update_chat_box("", assistant_message)
 
-
     def update_chat_box(self, user_message, assistant_message):
         def update(dt):
             if self.ids.welcome_message.parent is not None:
                 self.ids.output_container.remove_widget(self.ids.welcome_message)
 
-            user_message_item = Factory.WrappedLabel(text=f"User: {user_message}")
-            assistant_message_item = Factory.WrappedLabel(text=f"Assistant: {assistant_message}")
+            if user_message:  # Only add a user message widget if the message is not empty
+                user_message_item = Factory.WrappedLabel(text=f"User: {user_message}")
+                self.ids.output_container.add_widget(user_message_item)
+                Clock.schedule_once(lambda dt: self.ids.scroll_view.scroll_to(user_message_item), 0.1)
+                self.ids.scroll_view.scroll_to(user_message_item)
 
-            self.ids.output_container.add_widget(user_message_item)
+            assistant_message_item = Factory.WrappedLabel(text=f"Assistant: {assistant_message}")
             self.ids.output_container.add_widget(assistant_message_item)
-            Clock.schedule_once(lambda dt: self.ids.scroll_view.scroll_to(user_message_item), 0.1)
-            self.ids.scroll_view.scroll_to(user_message_item)
 
         Clock.schedule_once(update, 0)
+
 
 class VoiceAssistantApp(MDApp):
     def __init__(self, assistant, **kwargs):
