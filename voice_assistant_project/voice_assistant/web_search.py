@@ -238,3 +238,31 @@ def extract_text_from_pdf(url):
 #print("Testing follow-up query:")
 # summary_number = 3  # Replace this with the spoken input once integrated with the voice assistant
 # follow_up_query(summary_number, summaries, keywords)
+
+
+
+#openai integration will be like this 
+#def combined_web_search(query):
+#     print("Performing web search")
+#     bing_results, bing_top_snippet = bing_search(query)
+#     google_results, google_featured_snippet, google_knowledge_panel = google_search(query)
+
+#     search_result = ""
+#     if google_featured_snippet:
+#         print("google snippet: ", google_featured_snippet)
+#         search_result += f"Google Featured Snippet: {google_featured_snippet}\n"
+#     if google_knowledge_panel:
+#         search_result += f"Google Knowledge Panel: {google_knowledge_panel}\n"
+#     if bing_top_snippet:
+#         print("bing top snippet", bing_top_snippet)
+#         search_result += f"Bing Top Snippet: {bing_top_snippet}\n"
+
+#     search_result += "Google URLs:\n"
+#     for url in google_results:
+#         search_result += f"{url}\n"
+
+#     search_result += "Bing URLs:\n"
+#     for url in bing_results:
+#         search_result += f"{url}\n"
+
+#     return search_result

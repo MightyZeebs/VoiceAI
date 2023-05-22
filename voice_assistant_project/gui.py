@@ -101,6 +101,7 @@ class VoiceAssistantApp(MDApp):
         # Then create an instance of VoiceAssistantUI
         voice_assistant_ui = VoiceAssistantUI(self)
         voice_assistant_ui.assistant = self.assistant
+        self.voice_assistant_ui = VoiceAssistantUI(self)
         #print("KV code loaded successfully")
         return voice_assistant_ui
 

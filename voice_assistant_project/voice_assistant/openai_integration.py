@@ -12,6 +12,7 @@ from .nlp_processing import extract_keywords, search_conversation_history, remov
 from .web_search import bing_search, google_search
 from sklearn.feature_extraction.text import CountVectorizer
 from textblob import TextBlob
+from .google_palm import generate_palm_response
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -94,7 +95,7 @@ def handle_question(question, conn, current_time, ui):
         new_query = generate_web_search_query(question, history_str)
         
         # Pass the new query to your web search function
-        search_result = combined_web_search(new_query)
+        search_result = combined_web_search(new_query, current_time)
         
         # Send the search result back to OpenAI for a final response
         answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
@@ -103,18 +104,6 @@ def handle_question(question, conn, current_time, ui):
     else:
         print("Web search not required")
 
-# Check if the query starts with "web search needed:"
-    # if question.lower().startswith("web search needed:"):
-    #     print("web search needed detected")
-    #     # Generate a new query using OpenAI
-    #     new_query = generate_web_search_query(question, history_str)
-        
-    #     # Pass the new query to your web search function
-    #     search_result = combined_web_search(new_query)
-        
-    #     # Send the search result back to OpenAI for a final response
-    #     answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
-    #     return answer  # Return the answer early, skipping the rest of the function
     print("generating response")
     answer = generate_response(question, history_str, sentiment, current_time, date_answer)
 
@@ -126,8 +115,16 @@ def handle_question(question, conn, current_time, ui):
 
     return answer
 
-def combined_web_search(query):
+def combined_web_search(query, current_time):
     print("Performing web search")
+
+    # First, try to get a response from PALM
+    palm_context = generate_palm_response(query, current_time)
+    if palm_context:
+        # If PALM returned a result, return it immediately
+        return palm_context
+    
+    # If PALM didn't return a result, fall back to Bing and Google searches
     bing_results, bing_top_snippet = bing_search(query)
     google_results, google_featured_snippet, google_knowledge_panel = google_search(query)
 
@@ -159,7 +156,7 @@ def analyze_sentiment(input_text):
 
 def generate_web_search_query(input_text, context):
     print("Generating web search query...")
-    system_message = "You are an assistant that rephrases user queries into more effective web search queries. Your goal is not to answer the questions directly, but to transform them into optimal search queries."
+    system_message = "You are an assistant that specializes in providing the most up-to-date and relevant information. Your goal is to transform user queries into effective web search queries that yield the latest and most accurate results."
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -197,7 +194,7 @@ def generate_response(input_text, context, sentiment, current_time, date_answer=
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "system", "content": system_message}, {"role": "user", "content": input_text}],
-        max_tokens=200,
+        max_tokens=400,
         n=1,
         stop=None,
         temperature=0.5,
