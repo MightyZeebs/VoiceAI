@@ -1,5 +1,7 @@
 import os
 import pygame
+import sounddevice as sd
+import soundfile as sf
 import time
 import threading
 import numpy as np
@@ -42,53 +44,44 @@ def synthesize_speech(text):
     return audio_file_path
 
 
-def play_speech(audio_file_path, stop_event=None):
-    # Set environment variable to hide the pygame support prompt
-    os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-    
-    # Initialize pygame
-    pygame.init()
-    pygame.mixer.init()
+class Player:
+    def __init__(self):
+        self.stream = sd.OutputStream(callback=self.audio_callback, samplerate=16000)
+        self.data = None
+        self.index = 0
+        self.lock = threading.Lock()
 
-    try:
-        # Load the audio file
-       with open(audio_file_path,"rb") as f:
-        pygame.mixer.music.load(f)
-        pygame.mixer.music.play()
+    def audio_callback(self, outdata, frames, time, status):
+        if status:
+            print(status)
+        with self.lock:
+            if self.data is not None:
+                remaining = len(self.data) - self.index
+                if remaining >= frames:
+                    to_write = self.data[self.index:self.index+frames]
+                    self.index += frames
+                else:
+                    to_write = self.data[self.index:]
+                    self.data = None
+                outdata[:len(to_write)] = to_write.reshape((-1, 1))
+                if len(to_write) < frames:
+                    outdata[len(to_write):] = 0
+            else:
+                outdata[:] = 0
 
-        # Event to detect when audio is finished
-        pygame.mixer.music.set_endevent(pygame.USEREVENT)
+    def play(self, file):
+        with self.lock:
+            self.data, _ = sf.read(file, dtype='float32')
+            self.index = 0
+        if not self.stream.active:
+            self.stream.start()
 
-        audio_finished = False
-        while not audio_finished:
-            for event in pygame.event.get():
-                if event.type == pygame.USEREVENT:
-                    audio_finished = True
-            if stop_event and stop_event.is_set():
-                    pygame.mixer.music.stop()
-            pygame.time.Clock().tick(10)
+player = Player()
 
-
-    except pygame.error as e:
-        print(f"Error occurred while playing speech: {e}")
-        while True:
-            try:
-                # Wait for a short delay before retrying
-                time.sleep(0.5)
-
-                # Try loading the audio file again
-                with open(audio_file_path, "rb") as f:
-                    pygame.mixer.music.load(f)
-                    pygame.mixer.music.play()
-
-                break
-            except pygame.error:
-                # If the error occurs again, retry after a longer delay
-                time.sleep(1)
-
-def play_speech_threaded(audio_file_path, stop_event=None):
-    play_thread = threading.Thread(target=play_speech, args=(audio_file_path, stop_event), daemon=True)
+def play_speech_threaded(audio_file_path):
+    play_thread = threading.Thread(target=player.play, args=(audio_file_path,), daemon=True)
     play_thread.start()
+
 
 ###############ELEVENLABS###############
 # def sythesize_speech(text):
