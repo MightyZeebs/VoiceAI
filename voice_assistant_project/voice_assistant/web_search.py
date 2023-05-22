@@ -197,7 +197,7 @@ def extract_text_from_pdf(url):
 
 # Test the functionality of the code
 # Test the functionality of the code
-# query = "What is the best gun in the new call of duty"
+# query = "Ron desantis"
 # print("Question: ", query)
 # num_results = 8
 # keywords = extract_keywords(query)

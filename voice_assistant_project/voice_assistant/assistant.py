@@ -122,8 +122,13 @@ class VoiceAssistant:
 
                                 if self.push_to_talk_mode:
                                     transcript_buffer += " " + transcript
-                                else:
+
+                                if transcript.strip().lower() == "reset chat":
+                                    self.app.root.reset_chat()
+
+                                elif transcript.strip().lower():
                                     self.handle_transcript(transcript)
+
                 except StopIteration:
                     pass
                 except Exception as e:

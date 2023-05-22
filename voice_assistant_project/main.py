@@ -15,8 +15,6 @@ def main():
     app.run()
     assistant.stop()
 
-
-
 if __name__ == "__main__":
     delete_audio_files()
     main()

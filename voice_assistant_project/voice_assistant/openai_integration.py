@@ -35,7 +35,6 @@ def handle_question(question, conn, current_time, ui):
     print(type(conn))
     print(type(current_time))
     print(f"conn is: {conn}")
-    insert_message(conn, current_time, "user", question)
 
     recall_phrases = ["remember when", "recall", "search for"]
     recall_detected = any(phrase in question.lower() for phrase in recall_phrases)
@@ -49,9 +48,10 @@ def handle_question(question, conn, current_time, ui):
         reset_timestamp = current_time  # Update the reset timestamp when the chat is reset
         conversation_history = []  # Reset conversation_history
         ui.clear_chat_box()  # Clear the chatbox in the UI
-        return "Chat has been reset."
+        return "Chat has been successfully reset."
     else:
-        conversation_history = retrieve_database_history(conn, reset_timestamp=reset_timestamp)
+        insert_message(conn, current_time, "user", question)
+        conversation_history = retrieve_database_history(conn, reset_timestamp=reset_timestamp, max_messages=6)
     
     #check for date related question
     doc = nlp(question)
@@ -80,7 +80,7 @@ def handle_question(question, conn, current_time, ui):
 
     requires_web_search = False
 
-    if not conversation_history:
+    if len(conversation_history) <= 1:
         print("checking for web search question")
         question_vector = vectorizer.transform([question])
         requires_web_search = model.predict(question_vector)[0]
@@ -98,6 +98,7 @@ def handle_question(question, conn, current_time, ui):
         
         # Send the search result back to OpenAI for a final response
         answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
+        insert_message(conn, current_time, "assistant", answer)
         return answer 
     else:
         print("Web search not required")

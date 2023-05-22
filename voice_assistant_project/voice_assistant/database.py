@@ -40,7 +40,7 @@ def insert_message(conn, timestamp, speaker, text):
     except sqlite3.Error as e:
         print(e)
 
-def retrieve_database_history(conn, minutes=5, recall=False, reset_timestamp=None):
+def retrieve_database_history(conn, minutes=5, recall=False, reset_timestamp=None, max_messages=6):
     current_time = datetime.datetime.now()
     time_threshold = current_time - datetime.timedelta(minutes=minutes)
 
@@ -54,10 +54,10 @@ def retrieve_database_history(conn, minutes=5, recall=False, reset_timestamp=Non
         if recall:
             c.execute("SELECT * FROM conversation_history")
         else:
-            c.execute("SELECT * FROM conversation_history WHERE timestamp >= ?", (time_threshold.strftime("%Y-%m-%d %H:%M:%S.%f"),))
+            c.execute("SELECT * FROM conversation_history WHERE timestamp >= ? ORDER BY timestamp DESC LIMIT ?", (time_threshold.strftime("%Y-%m-%d %H:%M:%S.%f"), max_messages,))
 
         rows = c.fetchall()
-        return [(datetime.datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S.%f"), row[2], row[3]) for row in rows] if rows else []
+        return [(datetime.datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S.%f"), row[2], row[3]) for row in rows[::-1]] if rows else []
 
     except sqlite3.Error as e:
         print(e)
