@@ -152,6 +152,7 @@ def analyze_sentiment(input_text):
     print("analyzing sentiment")
     blob = TextBlob(input_text)
     sentiment = blob.sentiment.polarity
+    print ("sentiement: ", sentiment)
     return sentiment
 
 def generate_web_search_query(input_text, context):
@@ -202,7 +203,7 @@ def generate_response(input_text, context, sentiment, current_time, date_answer=
     ]
 
     if search_result:
-        search_message = f"In response to the user's question, the assistant found the following information to give them: {search_result}"
+        search_message = f"System to=assistant code: Please use the following information to answer the user's question. {search_result}"
         messages.append({"role": "system", "content": search_message})
     
     try:   
