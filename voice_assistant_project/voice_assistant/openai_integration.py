@@ -98,7 +98,7 @@ def handle_question(question, conn, current_time, ui):
         search_result = combined_web_search(new_query, current_time)
         
         # Send the search result back to OpenAI for a final response
-        answer = generate_response(search_result, history_str, sentiment, current_time, date_answer)
+        answer = generate_response(question, history_str, sentiment, current_time, date_answer, search_result)
         insert_message(conn, current_time, "assistant", answer)
         return answer 
     else:
@@ -119,7 +119,7 @@ def combined_web_search(query, current_time):
     print("Performing web search")
 
     # First, try to get a response from PALM
-    palm_context = generate_palm_response(query, current_time)
+    palm_context = generate_palm_response(query)
     if palm_context:
         # If PALM returned a result, return it immediately
         return palm_context
@@ -156,26 +156,33 @@ def analyze_sentiment(input_text):
 
 def generate_web_search_query(input_text, context):
     print("Generating web search query...")
-    system_message = "You are an assistant that specializes in providing the most up-to-date and relevant information. Your goal is to transform user queries into effective web search queries that yield the latest and most accurate results."
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "assistant", "content": context},
-            {"role": "user", "content": f"Transform this question into a web search query: '{input_text}'"}
-        ],
-        max_tokens=50,
-        n=1,
-        stop=None,
-        temperature=0.3,
-    )
+    system_message = "Do not answer the question. Instead you will combine the conversation history and most recent query to generate a new query that simplifies the question. Only respond with the new query"
+    
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "assistant", "content": context},
+                {"role": "user", "content": f"Transform this question into a web search query: '{input_text}'"}
+            ],
+            max_tokens=50,
+            n=1,
+            stop=None,
+            temperature=0.1,
+        )
+    except openai.error.RateLimitError:
+        print("RateLimitError: Model is currently overloaded with requests. Please try again later.")
+        return "Apologies, I'm currently a bit busy. Could you please try again in a few moments?"
+
 
     new_query = response.choices[0].message.content.strip()
     print("new query: ", new_query)
     return new_query
 
 
-def generate_response(input_text, context, sentiment, current_time, date_answer=None):
+def generate_response(input_text, context, sentiment, current_time, date_answer=None, search_result=None):
     print("Generating response based on input and context...")
     emotion = (
         "sad"
@@ -187,33 +194,51 @@ def generate_response(input_text, context, sentiment, current_time, date_answer=
 
     current_date_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
     date_info_messsage = f"The date information is: {date_answer}." if date_answer else ""
-    system_message = system_message = f"Generate a response as a helpful human-like assistant with a distinct personality. Be honest, inquisitive, and occasionally use humor, excitement, and sarcasm (about 20% of the time). Your knowledge is up to September 2021, and you should not guess or lie about any information. The current date and time is {current_date_time}. {date_info_messsage}\n{context}\nUser: {input_text}\nAssistant:"
+    system_message = f"Generate a response as a helpful human-like assistant with a distinct personality. Be honest, inquisitive, and occasionally use humor, excitement, and sarcasm (about 20% of the time). Your knowledge is up to September 2021, and you should not guess or lie about any information. The current date and time is {current_date_time}. {date_info_messsage}"
+    
+    messages = [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": input_text}
+    ]
 
-
-
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": system_message}, {"role": "user", "content": input_text}],
-        max_tokens=400,
-        n=1,
-        stop=None,
-        temperature=0.5,
-    )
-
-    answer = response.choices[0].message.content.strip()
-
-
-    if not answer.strip() or len(answer.split()) < 3:
-        print("Emotion-based response didn't work. Trying without emotion...")
-        prompt = f"{context}\nUser: {input_text}\nAssistant:"
+    if search_result:
+        search_message = f"In response to the user's question, the assistant found the following information to give them: {search_result}"
+        messages.append({"role": "system", "content": search_message})
+    
+    try:   
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": system_message}, {"role": "user", "content": input_text}],
-            max_tokens=200,
+            messages=messages,
+            max_tokens=400,
             n=1,
             stop=None,
             temperature=0.5,
         )
 
+    except openai.error.RateLimitError:
+        print("RateLimitError: Model is currently overloaded with requests. Please try again later.")
+        return "Apologies, I'm currently a bit busy. Could you please try again in a few moments?"
+
+
+    answer = response.choices[0].message.content.strip()
+
+
+
+    if not answer.strip() or len(answer.split()) < 3:
+        print("Emotion-based response didn't work. Trying without emotion...")
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "system", "content": system_message}, {"role": "user", "content": input_text}],
+               max_tokens=200,
+                n=1,
+                stop=None,
+                temperature=0.5,
+            )
+        except openai.error.RateLimitError:
+            print("RateLimitError: Model is currently overloaded with requests. Please try again later.")
+            return "Apologies, I'm currently a bit busy. Could you please try again in a few moments?"
+
         answer = response.choices[0].message.content.strip()
+
     return answer

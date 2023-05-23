@@ -8,10 +8,10 @@ palm_api_key = os.getenv("GOOGLE_PALM_API")
 palm.configure(api_key=palm_api_key) 
 model = 'models/text-bison-001'
 
-def generate_palm_response(query, context_date):
-    print("date stuff", context_date)
+
+def generate_palm_response(query):
     context = f"""
-    You are google web search but with other AI capabilities. You answer the following questions with the most up to date information around todays date of {context_date}. You provide as much context in an organized manner as possible
+    You are google web search. You answer the query and provide as much context in an organized manner as possible. Sort your results newest to oldest.
     """
 
     prompt = context + query
@@ -23,10 +23,13 @@ def generate_palm_response(query, context_date):
         max_output_tokens=800,
     )
 
-    result = completion.result if completion.result else ""
+    result = completion.result or ""
     print("results", result)
     if result.strip():
         return result
     else:
         return None
+    
+    
+
 

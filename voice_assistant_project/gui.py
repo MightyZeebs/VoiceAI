@@ -46,6 +46,12 @@ class VoiceAssistantUI(BoxLayout):
 
     def toggle_web_search(self, instance):
         self.app.assistant.force_web_search = not self.app.assistant.force_web_search
+        state = "on" if self.app.assistant.force_web_search else "off"
+        self.force_web_search_button.text = f'Force Web Search ({state})'  # Update the button text with the current state
+        message = f"Forced web search is now {state}"
+        audio_file_path = synthesize_speech(message)
+        play_speech_threaded(audio_file_path)  # Use your voice assistant to speak out the state
+
 
     def process_query(self, query):
         self.ids.user_input.text = ""
