@@ -17,7 +17,7 @@ from kivy.factory import Factory
 from kivymd.app import MDApp
 from kivy.core.window import Window
 from kivy.lang import Builder
-
+from kivy.uix.behaviors import togglebutton
 
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
@@ -39,8 +39,13 @@ class VoiceAssistantUI(BoxLayout):
     def __init__(self, app, **kwargs):
         super().__init__(**kwargs)
         self.app = app
-
+        self.force_web_search_button = Button(text='Force Web Search', size_hint=(0.2, 0.1))
+        self.force_web_search_button.bind(on_release=self.toggle_web_search)
+        self.add_widget(self.force_web_search_button)  # Add this button to your UI
         self.keyboard = Controller()
+
+    def toggle_web_search(self, instance):
+        self.app.assistant.force_web_search = not self.app.assistant.force_web_search
 
     def process_query(self, query):
         self.ids.user_input.text = ""

@@ -85,7 +85,7 @@ def handle_question(question, conn, current_time, ui):
         print("checking for web search question")
         question_vector = vectorizer.transform([question])
         requires_web_search = model.predict(question_vector)[0]
-    elif "web search needed" in question.lower():
+    elif "web search needed" in question.lower() or ui.app.assistant.force_web_search:
         requires_web_search = True
 
     # If the model predicts that the question requires post-2021 knowledge, trigger web search
