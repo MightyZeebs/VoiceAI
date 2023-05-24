@@ -15,12 +15,11 @@
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [dp(10)]
-
-
+            radius: [dp(30)]
 
 <VoiceAssistantUI>:
     orientation: 'horizontal'
+
     BoxLayout:
         orientation: 'vertical'
         size_hint_x: 0.2
@@ -34,7 +33,7 @@
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
-                    radius: [2, 2, 2, 2]
+                    radius: [10, 10, 10, 10]
                 Color:
                     rgba: 0.2, 0.2, 0.2, 1  # Box color
                 RoundedRectangle:
@@ -51,7 +50,7 @@
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
-                    radius: [1.5, 1.5, 1.5, 1.5]
+                    radius: [10, 10, 10, 10]
                 Color:
                     rgba: 0.2, 0.2, 0.2, 1  # Box color
                 RoundedRectangle:
@@ -64,11 +63,18 @@
         size_hint_x: 0.4
         orientation: 'vertical'
         canvas.before:
-            BorderImage:
-                source: 'jarvis_background.png'
+            Color:
+                rgba: 0.3, 0.3, 0.3, 1  # Border color
+            RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                border: 10, 10, 10, 10
+                radius: [10, 10, 10, 10]
+            Color:
+                rgba: 0.5, 0.5, 0.5, 1  # Box color
+            RoundedRectangle:
+                pos: self.pos[0] + 2, self.pos[1] + 2  # Offset by 1 to create border
+                size: self.size[0] - 4, self.size[1] - 4  # Reduce size by 2 to create border
+                radius: [10, 10, 10, 10]
 
         BoxLayout:  # Title
             size_hint_y: None
@@ -81,7 +87,7 @@
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
-                    radius: [1.5, 1.5, 1.5, 1.5]
+                    radius: [10, 10, 10, 10]
                 Color:
                     rgba: 0.2, 0.2, 0.2, 1  # Box color
                 RoundedRectangle:
@@ -106,7 +112,7 @@
 
                 canvas.before:
                     Color:
-                        rgba: 0.5, 0.5, 0.5, 0
+                        rgba: 0.5, 0.5, 0.5, 1
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
@@ -176,7 +182,7 @@
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
-                    radius: [1.5, 1.5, 1.5, 1.5]
+                    radius: [10, 10, 10, 10]
                 Color:
                     rgba: 0.2, 0.2, 0.2, 1  # Box color
                 RoundedRectangle:
@@ -193,7 +199,7 @@
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
-                    radius: [1.5, 1.5, 1.5, 1.5]
+                    radius: [10, 10, 10, 10]
                 Color:
                     rgba: 0.2, 0.2, 0.2, 1  # Box color
                 RoundedRectangle:

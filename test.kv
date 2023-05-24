@@ -1,0 +1,26 @@
+<WrappedButton@Button>:
+    bubble_color: [0, 0, 0, 1]
+    size_hint_y: None
+    height: self.texture_size[1]
+    text_size: (self.width - dp(20), None)
+    padding: (dp(10), dp(10))
+    markup: True
+    halign: 'left'
+    background_normal: ''
+    background_color: root.bubble_color
+    on_release: app.clipboard.put(self.text)  # Copy text to clipboard when button is clicked
+    canvas.before:
+        Color:
+            rgba: root.bubble_color
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [10]
+
+BoxLayout:
+    orientation: 'vertical'
+    padding: 50
+    spacing: 50
+
+    WrappedButton:
+        text: "Hello, World!"
