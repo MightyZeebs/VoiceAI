@@ -1,3 +1,40 @@
+<MainWindow>:
+    orientation: 'horizontal'
+    size_hint: 1, 1
+
+    WindowSpawner:
+        size_hint: 0.2, 1
+
+    BoxLayout:
+        id: mainarea
+        orientation: 'horizontal'
+        size_hint: 0.8, 1
+
+<WindowSpawner>:
+    orientation: 'vertical'
+
+    Button:
+        text: 'Voice Assistant'
+        on_release: root.spawn_assistant_window()
+
+    Button:
+        text: 'Search Results'
+        on_release: root.spawn_search_results_window()
+
+<AssistantWindow>:
+    size_hint: 0.5, 1
+    Label:
+        text: "Assistant window"
+        pos: root.pos
+        font_size: 30
+
+<SearchResultsWindow>:
+    size_hint: 0.5, 1
+    Label:
+        text: "Search results"
+        pos: root.pos
+        font_size: 30
+
 <WrappedButton@Button>:
     bubble_color: [0, 0, 0, 1]
     size_hint_y: None
@@ -17,192 +54,118 @@
             size: self.size
             radius: [dp(10)]
 
-
-
 <VoiceAssistantUI>:
+    # Combine new UI settings for sidebar with old UI settings for assistant features
     orientation: 'horizontal'
+
+    WindowSpawner:
+        size_hint: 0.2, 1
+
     BoxLayout:
-        orientation: 'vertical'
-        size_hint_x: 0.2
+        id: mainarea
+        orientation: 'horizontal'
+        size_hint: 0.8, 1
 
-        BoxLayout:  # Box 1
-            id: box_1
+        BoxLayout:  # Jarvis
+            id: jarvis_box
+            size_hint_x: 0.4
             orientation: 'vertical'
             canvas.before:
-                Color:
-                    rgba: 0.3, 0.3, 0.3, 1  # Border color
-                RoundedRectangle:
+                BorderImage:
+                    source: 'jarvis_background.png'
                     pos: self.pos
                     size: self.size
-                    radius: [2, 2, 2, 2]
-                Color:
-                    rgba: 0.2, 0.2, 0.2, 1  # Box color
-                RoundedRectangle:
-                    pos: self.pos[0] + 2, self.pos[1] + 2  # Offset by 1 to create border
-                    size: self.size[0] - 4, self.size[1] - 4  # Reduce size by 2 to create border
-                    radius: [10, 10, 10, 10]
+                    border: 10, 10, 10, 10
 
-        BoxLayout:  # Box 2
-            id: box_2
-            orientation: 'vertical'
-            canvas.before:
-                Color:
-                    rgba: 0.3, 0.3, 0.3, 1  # Border color
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [1.5, 1.5, 1.5, 1.5]
-                Color:
-                    rgba: 0.2, 0.2, 0.2, 1  # Box color
-                RoundedRectangle:
-                    pos: self.pos[0] + 2, self.pos[1] + 2  # Offset by 1 to create border
-                    size: self.size[0] - 4, self.size[1] - 4  # Reduce size by 2 to create border
-                    radius: [10, 10, 10, 10]
-
-    BoxLayout:  # Jarvis
-        id: jarvis_box
-        size_hint_x: 0.4
-        orientation: 'vertical'
-        canvas.before:
-            BorderImage:
-                source: 'jarvis_background.png'
-                pos: self.pos
-                size: self.size
-                border: 10, 10, 10, 10
-
-        BoxLayout:  # Title
-            size_hint_y: None
-            height: dp(30)  
-            orientation: 'horizontal'
-            align: 'center'
-            canvas.before:
-                Color:
-                    rgba: 0.3, 0.3, 0.3, 1  # Border color
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [1.5, 1.5, 1.5, 1.5]
-                Color:
-                    rgba: 0.2, 0.2, 0.2, 1  # Box color
-                RoundedRectangle:
-                    pos: self.pos[0] + 2, self.pos[1] + 2  # Offset by 1 to create border
-                    size: self.size[0] - 4, self.size[1] - 4  # Reduce size by 2 to create border
-                    radius: [10, 10, 10, 10]
-            Label:
-                text: "Jarvis"
-                font_size: '16sp'
-                color: 1, 1, 1, 1  #text
-
-            
-        BoxLayout:
-            size_hint_y: None
-            height: dp(40)
-            padding: dp(20), 0 #padding of blank space around query box to make it more even
-
-            BoxLayout:
+            BoxLayout:  # Title
                 size_hint_y: None
-                height: dp(40)
-                padding: dp(20), 0 # padding of blank space around query box to make it more even
-
+                height: dp(30)  
+                orientation: 'horizontal'
+                align: 'center'
                 canvas.before:
                     Color:
-                        rgba: 0.5, 0.5, 0.5, 0
+                        rgba: 0.3, 0.3, 0.3, 1  # Border color
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
+                        radius: [1.5, 1.5, 1.5, 1.5]
+                    Color:
+                        rgba: 0.2, 0.2, 0.2, 1  # Box color
+                    RoundedRectangle:
+                        pos: self.pos[0] + 2, self.pos[1] + 2  # Offset by 1 to create border
+                        size: self.size[0] - 4, self.size[1] - 4  # Reduce size by 2 to create border
                         radius: [10, 10, 10, 10]
+                Label:
+                    text: "Jarvis"
+                    font_size: '16sp'
+                    color: 1, 1, 1, 1  #text
 
-                MDTextField:
-                    id: user_input
-                    hint_text: 'Type your query here'
-                    halign: 'left'
-                    size_hint_y: None
-                    height: dp(50)
-                    multiline: False
-                    mode: "round"
-                    radius: [20, 20, 20, 20]
-                    line_color_normal: 0.2, 0.2, 0.2, 1 #box that goes around text input query before activation, same as BG for transparency
-                    line_color_focus: 0.7, 0.7, 0.7, 1  #box after the text query is activated, same as BG for transparency
-                    on_text_validate: root.process_query(self.text)
-
-        BoxLayout:  # Buttons
-            size_hint_y: None
-            height: dp(40)
-
-            Widget:
-
-            MDRaisedButton:
-                text: 'Submit'
-                pos_hint: {"center_x": .5}
-                on_release: root.process_query(user_input.text)
-
-            Widget:
-
-            MDRaisedButton:
-                text: 'Reset'
-                pos_hint: {"center_x": .5}
-                on_release: root.reset_chat()
-
-            Widget:
-
-            MDRaisedButton:
-                text: 'Force Web Search'
-                pos_hint: {"center_x": .5}
-                on_release: root.force_web_search()
-
-            Widget:
-
-        ScrollView:
-            id: scroll_view
-
-            MDList:
-                id: output_container
-                padding: dp(10)
-                spacing: dp(10)
+                
+            BoxLayout:
                 size_hint_y: None
-                height: self.minimum_height
-                adaptive_height: True
+                height: dp(40)
+                padding: dp(20), 0 #padding of blank space around query box to make it more even
 
-    BoxLayout:
-        orientation: 'vertical'
-        size_hint_x: 0.2
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(40)
+                    padding: dp(20), 0 # padding of blank space around query box to make it more even
 
-        BoxLayout:  # Box 3
-            id: box_3
-            orientation: 'vertical'
-            canvas.before:
-                Color:
-                    rgba: 0.3, 0.3, 0.3, 1  # Border color
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [1.5, 1.5, 1.5, 1.5]
-                Color:
-                    rgba: 0.2, 0.2, 0.2, 1  # Box color
-                RoundedRectangle:
-                    pos: self.pos[0] + 2, self.pos[1] + 2  # Offset by 1 to create border
-                    size: self.size[0] - 4, self.size[1] - 4  # Reduce size by 2 to create border
-                    radius: [10, 10, 10, 10]
+                    canvas.before:
+                        Color:
+                            rgba: 0.5, 0.5, 0.5, 0
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [10, 10, 10, 10]
 
-        BoxLayout:  # Box 4
-            id: box_4
-            orientation: 'vertical'
-            canvas.before:
-                Color:
-                    rgba: 0.3, 0.3, 0.3, 1  # Border color
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [1.5, 1.5, 1.5, 1.5]
-                Color:
-                    rgba: 0.2, 0.2, 0.2, 1  # Box color
-                RoundedRectangle:
-                    pos: self.pos[0] + 2, self.pos[1] + 2  # Offset by 1 to create border
-                    size: self.size[0] - 4, self.size[1] - 4  # Reduce size by 2 to create border
-                    radius: [10, 10, 10, 10]
+                    MDTextField:
+                        id: user_input
+                        hint_text: 'Type your query here'
+                        halign: 'left'
+                        size_hint_y: None
+                        height: dp(50)
+                        multiline: False
+                        mode: "round"
+                        radius: [20, 20, 20, 20]
+                        line_color_normal: 0.2, 0.2, 0.2, 1 #box that goes around text input query before activation, same as BG for transparency
+                        line_color_focus: 0.7, 0.7, 0.7, 1  #box after the text query is activated, same as BG for transparency
+                        on_text_validate: root.process_query(self.text)
 
+            BoxLayout:  # Buttons
+                size_hint_y: None
+                height: dp(40)
 
+                Widget:
 
+                MDRaisedButton:
+                    text: 'Submit'
+                    pos_hint: {"center_x": .5}
+                    on_release: root.process_query(user_input.text)
 
+                Widget:
 
+                MDRaisedButton:
+                    text: 'Reset'
+                    pos_hint: {"center_x": .5}
+                    on_release: root.reset_chat()
 
+                Widget:
+
+                MDRaisedButton:
+                    text: 'Force Web Search'
+                    pos_hint: {"center_x": .5}
+                    on_release: root.force_web_search()
+
+                Widget:
+
+            ScrollView:
+                id: scroll_view
+
+                MDList:
+                    id: output_container
+                    padding: dp(10)
+                    spacing: dp(10)
+                    size_hint_y: None
+                    height: self.minimum_height
+                    adaptive_height: True
