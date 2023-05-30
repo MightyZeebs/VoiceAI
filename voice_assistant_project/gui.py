@@ -1,139 +1,177 @@
 import sys
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QClipboard, QFont
-from PyQt5.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QVBoxLayout,
-    QWidget,
-    QPushButton,
-    QTextEdit,
-    QLabel,
-    QScrollArea,
-)
+from PyQt5.QtCore import Qt, QMimeData, pyqtSignal
+from PyQt5.QtGui import QDrag
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QFrame, QPushButton, QToolBar, QSizePolicy, QSpacerItem
+from PyQt5.QtWidgets import QMenu, QMdiSubWindow, QMdiArea
+from CellWidget import CellWidget
+from jarvis import JarvisWidget
+from voice_assistant.assistant import VoiceAssistant
 from voice_assistant.speech import synthesize_speech, play_speech_threaded
 from voice_assistant.openai_integration import handle_question
-from pynput.keyboard import Controller
-import datetime
-import threading
+
+class HoverButton(QPushButton):
+    add_cell_signal = pyqtSignal(int)  # This signal sends an integer
+
+    def __init__(self, *args, **kwargs):
+        super(HoverButton, self).__init__(*args, **kwargs)
+        self.setMouseTracking(True)
+        # Set the text of the button
+        self.setText("Add Cell")
+        # Optionally, set an icon
+        # self.setIcon(QIcon("path_to_icon.png"))
+        # Set the size of the button to fit the text and the icon
+        self.setFixedSize(100, 100) # Adjust the size based on your needs
+        self.jarvis_active = False
+        self.menu = QMenu(self)
+        for i in range(1, 4):  # For 1, 2, and 3
+            action = self.menu.addAction(str(i))
+            action.triggered.connect(lambda checked, i=i: self.add_cell_signal.emit(i))
+
+    def enterEvent(self, event):
+        self.menu.exec_(self.mapToGlobal(self.rect().bottomLeft()))
+
+class DraggableButton(QPushButton):
+    drag_jarvis_signal = pyqtSignal()
+
+    def __init__(self, name, *args, **kwargs):
+        super(DraggableButton, self).__init__(*args, **kwargs)
+        self.name = name
+        self.setText(self.name)
+        self.setFixedSize(100, 100)
+        self.drag_start_position = None  # Initialize drag_start_position
+
+    def mousePressEvent(self, e):
+        super().mousePressEvent(e)  # ensure normal button behavior
+        if e.button() == Qt.LeftButton:
+            self.drag_start_position = e.pos()
+            if self.text() == "Jarvis":
+                self.setStyleSheet("background-color: red;")  # highlight button
+                self.drag_jarvis_signal.emit()  # emit signal even if button is just clicked
 
 
-class ChatBubble(QPushButton):
-    def __init__(self, text, bubble_color, parent=None):
-        super().__init__(parent)
-        self.setText(text)
-        self.setStyleSheet("background-color: rgba{0, 0, 0, 0};")
-        self.setAlignment(Qt.AlignLeft)
-        self.bubble_color = bubble_color
+    def mouseMoveEvent(self, e):
+        if not (e.buttons() & Qt.LeftButton):
+            return
+        if self.drag_start_position is not None and \
+            (e.pos() - self.drag_start_position).manhattanLength() < QApplication.startDragDistance():
+            return
+        drag = QDrag(self)
+        mimedata = QMimeData()
 
-    def mouseReleaseEvent(self, event):
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.text())
+        # Add name to the dragged data
+        mimedata.setText(self.name)
+        drag.setMimeData(mimedata)
+        if self.name == "Jarvis":
+            self.drag_jarvis_signal.emit()
+        drag.exec_(Qt.MoveAction)
 
-
-class VoiceAssistantUI(QWidget):
-    def __init__(self, app):
+class MainWindow(QMainWindow):
+    def __init__(self):
         super().__init__()
-        self.app = app.assistant
-        self.keyboard = Controller()
 
-        self.layout = QVBoxLayout(self)
-        self.setLayout(self.layout)
+        self.setWindowTitle("Resizable Cells Demo")
+        self.setGeometry(100, 100, 800, 600)
 
-        self.user_input = QTextEdit(self)
-        self.user_input.setMaximumHeight(40)
-        self.layout.addWidget(self.user_input)
+        main_widget = QWidget(self)
+        self.setCentralWidget(main_widget)
 
-        self.force_web_search_button = QPushButton("Force Web Search", self)
-        self.force_web_search_button.setCheckable(True)
-        self.force_web_search_button.clicked.connect(self.force_web_search)
-        self.layout.addWidget(self.force_web_search_button)
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.voice_assistant = None
+        self.toolbar = QToolBar()
+        self.toolbar.setOrientation(Qt.Vertical)
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        main_layout.addWidget(self.toolbar)
+        self.jarvis_active = False
+        self.add_jarvis_button = DraggableButton("Jarvis", self)
+        self.add_jarvis_button.drag_jarvis_signal.connect(self.add_jarvis_widget)
+        self.toolbar.addWidget(self.add_jarvis_button)
+        self.add_cell_button = HoverButton("Add Cell", self)
+        self.toolbar.addWidget(self.add_cell_button)
+        self.add_cell_button.add_cell_signal.connect(self.add_cell)
+        self.splitter = QSplitter(Qt.Horizontal, main_widget)
+        main_layout.addWidget(self.splitter)
 
-        self.output_container = QWidget(self)
-        self.output_layout = QVBoxLayout(self.output_container)
-        self.scroll_area = QScrollArea(self)
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setWidget(self.output_container)
-        self.layout.addWidget(self.scroll_area)
+        for _ in range(3):  # Add 3 rows
+            h_splitter = QSplitter(Qt.Vertical)
+            self.splitter.addWidget(h_splitter)
 
-    def force_web_search(self):
-        self.app.assistant.force_web_search = not self.app.assistant.force_web_search
-        state = "on" if self.app.assistant.force_web_search else "off"
-        self.force_web_search_button.setText(f"Force Web Search ({state})")
-        message = f"Forced web search is now {state}"
-        audio_file_path = synthesize_speech(message)
-        play_speech_threaded(audio_file_path)
+            for _ in range(3):  # Add 3 columns
+                cell_widget = CellWidget(parent=h_splitter)
+                h_splitter.addWidget(cell_widget)
 
-    def process_query(self, query):
-        self.user_input.clear()
-        self.user_input.setFocus(Qt.OtherFocusReason)
-        if query:
-            self.update_user_message_in_chat_box(query)
-            threading.Thread(target=self.process_query_thread, args=(query,)).start()
+    def add_cell(self, column):
+        if 0 < column <= self.splitter.count():
+            target_splitter = self.splitter.widget(column - 1)
+            cell_widget = CellWidget("Cell")
+            target_splitter.addWidget(cell_widget)
+    
+    def set_voice_assistant(self, voice_assistant):
+        self.voice_assistant = voice_assistant
+        voice_assistant.main_window = self
 
-    def process_query_thread(self, query):
-        if query:
-            current_time = datetime.datetime.now()
-            if query.lower() == "reset chat":
-                self.reset_chat()
-                assistant_message = "Chat has been successfully reset."
-                audio_file_path = synthesize_speech(assistant_message)
-                play_speech_threaded(audio_file_path)
-                self.update_chat_box("", assistant_message)
-            else:
-                print("User:", query)
-                response = handle_question(query, self.app.conn, current_time, self)
-                audio_file_path = synthesize_speech(response)
-                play_speech_threaded(audio_file_path)
-                self.update_chat_box(query, response)
+    def add_jarvis_widget(self):
+        print("add_jarvis_widget triggered")
+        self.jarvis_active = True
+        self.jarvis_widget = JarvisWidget()   # create an instance of JarvisWidget
+        self.jarvis_widget.set_voice_assistant(self.voice_assistant)  # call the method on the instance
+        self.add_jarvis_button.setStyleSheet("background-color: red;")  # highlight button
 
-    def simulate_key_press(self, key):
-        self.keyboard.press(key)
-        self.keyboard.release(key)
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
 
-    def clear_chat_box(self):
-        for i in reversed(range(self.output_layout.count())):
-            self.output_layout.itemAt(i).widget().deleteLater()
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
 
-    def reset_chat(self):
-        self.clear_chat_box()
-        current_time = datetime.datetime.now()
-        handle_question("reset chat", self.app.assistant.conn, current_time, self)
-        assistant_message = "Chat has been successfully reset."
-        audio_file_path = synthesize_speech(assistant_message)
-        play_speech_threaded(audio_file_path)
-        self.update_chat_box("", assistant_message)
+    def find_drop_target(self, widget, pos):
+        child = widget.childAt(widget.mapFromGlobal(pos))
+        if child is None:
+            return widget
+        else:
+            return self.find_drop_target(child, pos)
 
-    def update_user_message_in_chat_box(self, user_message):
-        if self.layout.count() > 3:
-            self.layout.itemAt(2).widget().deleteLater()
-        user_message_item = ChatBubble(f"User: {user_message}", [1, 0, 0, 0.5], self.output_container)
-        self.output_layout.addWidget(user_message_item)
-
-    def update_chat_box(self, user_message, assistant_message):
-        if self.layout.count() > 3:
-            self.layout.itemAt(2).widget().deleteLater()
-        assistant_message_item = ChatBubble(f"Assistant: {assistant_message}", [0, 0, 1, 0.5], self.output_container)
-        self.output_layout.addWidget(assistant_message_item)
-
-
-class VoiceAssistantApp(QMainWindow):
-    def __init__(self, assistant):
-        super().__init__()
-        self.assistant = assistant
-        self.setWindowTitle("Voice Assistant")
-        self.setGeometry(100, 100, 400, 600)
-
-        self.voice_assistant_ui = VoiceAssistantUI(self)
-        self.setCentralWidget(self.voice_assistant_ui)
-
-    def process_query(self, query):
-        self.voice_assistant_ui.process_query(query)
+    def dropEvent(self, event):
+        print("MainWindow dropEvent: ", event.mimeData().text())
+        if event.mimeData().hasText():
+            global_pos = event.globalPos()
+            target_widget = self.find_drop_target(self, global_pos)
+            if isinstance(target_widget, CellWidget):
+                if event.mimeData().text() == "Jarvis":
+                    target_widget.delete_self()  # Delete the existing CellWidget
+                    # Create and insert a new JarvisWidget
+                    jarvis_widget = JarvisWidget(target_widget.parent())
+                    target_widget.parent().addWidget(jarvis_widget)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    my_voice_assistant = VoiceAssistantUI(app)
-    voice_assistant_app = VoiceAssistantApp(my_voice_assistant)
-    voice_assistant_app.show()
+    app.setStyleSheet("""
+        QWidget {
+            background-color: #2b2b2b;
+        }
+        QPushButton {
+            background-color: #31363b;
+            color: #eff0f1;
+            border: none;
+        }
+        QPushButton:hover {
+            background-color: #3daee9;
+            color: #2b2b2b;
+        }
+    QPushButton:hover {
+            background-color: #3daee9;
+            color: #2b2b2b;
+        }
+        QMenu {
+            background-color: #ffffff;  /* Changing the background color of the QMenu */
+            color: #000000;             /* Changing the text color of the QMenu */
+        }
+        QMenu::item:selected {
+            background-color: #ff0000;  /* Changing the background color of the selected QMenu item */
+        }
+    """)
+    window = MainWindow()
+    window.show()
     sys.exit(app.exec_())
