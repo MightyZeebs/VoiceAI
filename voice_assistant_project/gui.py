@@ -84,7 +84,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.toolbar)
         self.jarvis_active = False
         self.add_jarvis_button = DraggableButton("Jarvis", self)
-        self.add_jarvis_button.drag_jarvis_signal.connect(self.add_jarvis_widget)
+        self.add_jarvis_button.drag_jarvis_signal.connect(self.start_jarvis_drag)
         self.toolbar.addWidget(self.add_jarvis_button)
         self.add_cell_button = HoverButton("Add Cell", self)
         self.toolbar.addWidget(self.add_cell_button)
@@ -110,10 +110,12 @@ class MainWindow(QMainWindow):
         self.voice_assistant = voice_assistant
         voice_assistant.main_window = self
 
-    def add_jarvis_widget(self):
+
+    def start_jarvis_drag(self):
         print("add_jarvis_widget triggered")
         self.jarvis_active = True
         self.jarvis_widget = JarvisWidget()   # create an instance of JarvisWidget
+        self.voice_assistant.jarvis_widget = self.jarvis_widget  # Set jarvis_widget for the voice_assistant
         self.jarvis_widget.set_voice_assistant(self.voice_assistant)  # call the method on the instance
         self.add_jarvis_button.setStyleSheet("background-color: red;")  # highlight button
 

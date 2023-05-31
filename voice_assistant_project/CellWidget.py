@@ -92,6 +92,8 @@ class CellWidget(QFrame):
 
             main_window.jarvis_active = False  # reset flag
             main_window.add_jarvis_button.setStyleSheet("")  # unhighlight button
+        else:
+            self.button.show()
 
 
     def dropEvent(self, event):

@@ -13,13 +13,15 @@ from .database import create_connection, create_table, insert_message
 from .openai_integration import handle_question, conversation_history
 from .speech import synthesize_speech, play_speech_threaded, callback
 from threading import Lock
-
+from jarvis import JarvisWidget
 device_index = None
 #conversation_history = []
 
 class VoiceAssistant:
     def __init__(self, deactivation_keyword="Jarvis stop"):
         self.root = None
+        self.jarvis_widget = None
+        self.main_window = None
         self.device_index = sd.default.device[0]
         self.stop_thread = False
         self.toggle_event = threading.Event()
@@ -70,6 +72,8 @@ class VoiceAssistant:
                 self.recording_thread.join()
         print("stopping 'run' thread")
 
+    def set_main_window(self, main_window):
+        self.main_window = main_window
     
     def toggle(self):
         with self.toggle_lock:
@@ -168,7 +172,7 @@ class VoiceAssistant:
         print(f"[{time.strftime('%H:%M:%S')}] Sent to OpenAI API")
         Current_time = datetime.datetime.now()
 
-        answer = handle_question(transcript, self.conn, Current_time, self.app.root)
+        answer = handle_question(transcript, self.conn, Current_time, self.main_window)
         audio_content = synthesize_speech(answer)
         print("assistant:", answer)
         self.is_speaking = True
@@ -176,8 +180,9 @@ class VoiceAssistant:
         self.is_speaking = False
 
         conversation_history.append((Current_time, "assistant: " + answer))
-        if self.app is not None and self.app.root is not None:
-            self.app.root.update_chat_box(transcript, answer)
+        self.jarvis_widget.chat_field.append("User: " + transcript)
+        self.jarvis_widget.chat_field.append("Assistant: " + answer)
+        return answer
 
     def set_deactivation_keyword(keyword):
         global deactivation_keyword

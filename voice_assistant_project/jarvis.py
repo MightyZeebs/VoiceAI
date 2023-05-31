@@ -22,6 +22,7 @@ class JarvisWidget(QFrame):
 
     def set_voice_assistant(self, voice_assistant):
         self.voice_assistant = voice_assistant
+        voice_assistant.jarvis_widget = self
 
     def add_extra_content(self, widgets):
         for widget in widgets:
@@ -34,8 +35,4 @@ class JarvisWidget(QFrame):
         if query:
             if self.web_search_checkbox.isChecked():
                 query = "web search needed" + query
-            self.voice_assistant.handle_transcript(query)
-            assistant_response = "Understood."
-            # Update the chat field
-            self.chat_field.append("User: " + query)
-            self.chat_field.append("Assistant: " + assistant_response)
+            assistant_response = self.voice_assistant.handle_transcript(query)

@@ -43,7 +43,6 @@ def synthesize_speech(text):
     print(f"saved audio to {audio_file_path}")
     return audio_file_path
 
-
 class Player:
     def __init__(self):
         self.stream = sd.OutputStream(callback=self.audio_callback, samplerate=16000)
@@ -132,4 +131,23 @@ def play_speech_threaded(audio_file_path):
 #         audio_file.write(response.audio_content)
 #         print(f"saved audio to {audio_file_path}")
 
+#     return audio_file_path
+
+##############AZURE text to speech#########################
+# def synthesize_speech(text):
+#     azure_api_key = os.getenv('AZURE_API_KEY')
+#     speech_config = SpeechConfig(subscription=azure_api_key, region="eastus")
+#     speech_config.set_speech_synthesis_output_format(SpeechSynthesisOutputFormat.Riff16Khz16BitMonoPcm)
+#     speech_config.speech_synthesis_voice_name = "en-US-JennyNeural"
+#     speech_config.speech_synthesis_style_ids = ["assistant"]
+
+#     audio_file_name = f"audio_{uuid.uuid4().hex}.wav"
+#     audio_file_path = os.path.join("audio_files", audio_file_name)
+
+#     audio_output_config = AudioOutputConfig(filename=audio_file_path)
+#     synthesizer = SpeechSynthesizer(speech_config=speech_config, audio_config=audio_output_config)
+
+#     synthesizer.speak_text(text)
+
+#     print(f"saved audio to {audio_file_path}")
 #     return audio_file_path
