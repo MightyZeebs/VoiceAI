@@ -31,6 +31,22 @@ class CellWidget(QFrame):
         self.extra_content_layout = QVBoxLayout()
         self.main_layout.insertLayout(1, self.extra_content_layout)
 
+        self.setStyleSheet("""
+            CellWidget {
+                background-color: #31363b;
+                color: #eff0f1;
+            }
+            QPushButton {
+                background-color: #31363b;
+                color: #eff0f1;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #3daee9;
+                color: #2b2b2b;
+            }
+        """)
+
     def add_extra_content(self, widgets):
         for widget in widgets:
             self.extra_content_layout.addWidget(widget)
@@ -92,8 +108,7 @@ class CellWidget(QFrame):
 
             main_window.jarvis_active = False  # reset flag
             main_window.add_jarvis_button.setStyleSheet("")  # unhighlight button
-        else:
-            self.button.show()
+
 
 
     def dropEvent(self, event):

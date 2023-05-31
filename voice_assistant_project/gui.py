@@ -149,31 +149,6 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyleSheet("""
-        QWidget {
-            background-color: #2b2b2b;
-        }
-        QPushButton {
-            background-color: #31363b;
-            color: #eff0f1;
-            border: none;
-        }
-        QPushButton:hover {
-            background-color: #3daee9;
-            color: #2b2b2b;
-        }
-    QPushButton:hover {
-            background-color: #3daee9;
-            color: #2b2b2b;
-        }
-        QMenu {
-            background-color: #ffffff;  /* Changing the background color of the QMenu */
-            color: #000000;             /* Changing the text color of the QMenu */
-        }
-        QMenu::item:selected {
-            background-color: #ff0000;  /* Changing the background color of the selected QMenu item */
-        }
-    """)
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())

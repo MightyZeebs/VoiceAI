@@ -14,13 +14,15 @@ from .openai_integration import handle_question, conversation_history
 from .speech import synthesize_speech, play_speech_threaded, callback
 from threading import Lock
 from jarvis import JarvisWidget
+from PyQt5.QtGui import QStandardItem
+
 device_index = None
 #conversation_history = []
 
 class VoiceAssistant:
-    def __init__(self, deactivation_keyword="Jarvis stop"):
+    def __init__(self, deactivation_keyword="Jarvis stop", jarvis_widget=None):
         self.root = None
-        self.jarvis_widget = None
+        self.jarvis_widget = jarvis_widget
         self.main_window = None
         self.device_index = sd.default.device[0]
         self.stop_thread = False
@@ -37,7 +39,7 @@ class VoiceAssistant:
         self.activation_listener_thread = threading.Thread(target=self.activation_listener, args=('alt+x', '-'))
         self.activation_listener_thread.start()
         self.push_to_talk_mode = False
-        self.force_web_search = False
+        # self.force_web_search = False
         self.client = speech.SpeechClient()
         self.config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
@@ -180,8 +182,11 @@ class VoiceAssistant:
         self.is_speaking = False
 
         conversation_history.append((Current_time, "assistant: " + answer))
-        self.jarvis_widget.chat_field.append("User: " + transcript)
-        self.jarvis_widget.chat_field.append("Assistant: " + answer)
+        user_item = QStandardItem("User: " + transcript)
+        assistant_item = QStandardItem("Assistant: " + answer)
+        self.jarvis_widget.chat_list_model.appendRow(user_item)
+        self.jarvis_widget.chat_list_model.appendRow(assistant_item)
+        self.jarvis_widget.chat_list_view.scrollToBottom()
         return answer
 
     def set_deactivation_keyword(keyword):
