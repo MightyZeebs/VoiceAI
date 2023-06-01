@@ -112,6 +112,7 @@ class JarvisWidget(QFrame):
             }
             QListView {
                 background-color: transparent;
+                border: none;
             }
         """)
 
