@@ -66,6 +66,7 @@ class JarvisWidget(QFrame):
     def __init__(self, parent=None):
         super(JarvisWidget, self).__init__(parent)
         print("Creating a JarvisWidget")
+        self.deletable = True
         self.chat_input = QLineEdit(self)
         self.search_button = QPushButton("Search", self)
         self.search_button.clicked.connect(self.process_query)
@@ -79,10 +80,21 @@ class JarvisWidget(QFrame):
         self.web_search_checkbox = QCheckBox("Force web search", self)
         self.web_search_checkbox.setStyleSheet("background-color: #31363b; border-radius: 15px;")
 
+        # delete button for JarvisWidget
+        self.jarvis_delete_button = QPushButton("X", self)
+        self.jarvis_delete_button.clicked.connect(self.delete_jarvis)
+        self.jarvis_delete_button.setFixedSize(25, 25)
+        self.jarvis_delete_button.setStyleSheet("""
+            background-color: #31363b;
+            border-radius: 12px;
+        """)
 
 
         self.chat_layout = QVBoxLayout()
         self.setLayout(self.chat_layout)
+
+        # Include Jarvis delete button to layout
+        self.chat_layout.addWidget(self.jarvis_delete_button, alignment=Qt.AlignTop | Qt.AlignRight)
 
         self.add_extra_content([self.chat_input, self.search_button, self.chat_list_view, self.web_search_checkbox])
 
@@ -90,6 +102,8 @@ class JarvisWidget(QFrame):
             JarvisWidget {
                 background-color: #31363b;
                 color: #eff0f1;
+                border-radius: 15px;
+                padding: 5px;
             }
             QLineEdit {
                 background-color: #45494e;
@@ -98,9 +112,19 @@ class JarvisWidget(QFrame):
             }
             QListView {
                 background-color: transparent;
-                border: none;
             }
         """)
+
+    # Added method to delete JarvisWidget
+    def delete_jarvis(self):
+        parent = self.parent()
+        for i in reversed(range(parent.main_layout.count())): 
+            widget = parent.main_layout.itemAt(i).widget()
+            if widget is not None and isinstance(widget, JarvisWidget):
+                widget.deleteLater()
+                parent.has_widget = False  # Reset the has_widget flag
+                parent.button.show()  # Show the button again
+                parent.delete_button.show()  # Show the cell delete button again
 
     def set_voice_assistant(self, voice_assistant):
         self.voice_assistant = voice_assistant

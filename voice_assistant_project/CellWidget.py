@@ -40,6 +40,7 @@ class CellWidget(QFrame):
             CellWidget {
                 background-color: #31363b;
                 color: #eff0f1;
+                border: 2px solid black;
                 border-radius: 15px;
             }
             QPushButton {
@@ -58,35 +59,19 @@ class CellWidget(QFrame):
             self.extra_content_layout.addWidget(widget)
 
     def delete_self(self):
-        # If the cell has a widget, clear it
         if self.has_widget:
-            # Iterate over all widgets in the layout and remove them
             for i in reversed(range(self.main_layout.count())): 
                 widget = self.main_layout.itemAt(i).widget()
-                if widget is not None:  # if widget exists
-                    widget.deleteLater()  # delete the widget
-
-            # Reset cell to default state
-            self.delete_button.clicked.connect(self.delete_self)
-            self.delete_button.setFixedSize(25, 25)
-
-            top_layout = QHBoxLayout()
-            top_layout.setContentsMargins(0, 2, 2, 0)  # right & top margin is set to 2
-            top_layout.addStretch()
-            top_layout.addWidget(self.delete_button)
-
-            self.main_layout.addLayout(top_layout)
-
-            self.button = QPushButton(self.name if self.name else "Cell")
-            self.button.setParent(self)
-            self.main_layout.addWidget(self.button, alignment=Qt.AlignCenter)
-            self.has_widget = False  # Reset the has_widget flag
+                if widget is not None and getattr(widget, 'deletable', False):  
+                    widget.deleteLater()
+                    self.has_widget = False  # Reset the has_widget flag
+                    self.button.show()  # Show the button again
         else:
             # If the cell is empty, delete it
             parent = self.parent()
-            # Remove the cell widget from its parent splitter
             index = parent.indexOf(self)
             parent.widget(index).setParent(None)
+
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasText():
@@ -106,6 +91,7 @@ class CellWidget(QFrame):
             parent = self.parent()
             # Instead of deleting self, hide the button and delete button
             self.button.hide()
+            self.delete_button.hide()
 
             jarvis_widget = JarvisWidget(self)  # The parent of JarvisWidget is the CellWidget itself
             jarvis_widget.set_voice_assistant(main_window.voice_assistant)  # Set the voice assistant for the widget
