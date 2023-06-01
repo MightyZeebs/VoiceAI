@@ -16,6 +16,11 @@ class CellWidget(QFrame):
         self.delete_button = QPushButton("X", self)
         self.delete_button.clicked.connect(self.delete_self)
         self.delete_button.setFixedSize(25, 25)
+        self.delete_button.setStyleSheet("""
+            background-color: #31363b;
+            border-radius: 12px;
+        """)
+
 
         top_layout = QHBoxLayout()
         top_layout.setContentsMargins(0, 2, 2, 0)  # right & top margin is set to 2
@@ -35,6 +40,7 @@ class CellWidget(QFrame):
             CellWidget {
                 background-color: #31363b;
                 color: #eff0f1;
+                border-radius: 15px;
             }
             QPushButton {
                 background-color: #31363b;

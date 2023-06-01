@@ -79,6 +79,8 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         self.voice_assistant = None
         self.toolbar = QToolBar()
+        self.toolbar.setStyleSheet("background-color: #31363b;")
+        self.setStyleSheet("background-color: #111111;")
         self.toolbar.setOrientation(Qt.Vertical)
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         main_layout.addWidget(self.toolbar)

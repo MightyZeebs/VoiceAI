@@ -39,7 +39,6 @@ class VoiceAssistant:
         self.activation_listener_thread = threading.Thread(target=self.activation_listener, args=('alt+x', '-'))
         self.activation_listener_thread.start()
         self.push_to_talk_mode = False
-        # self.force_web_search = False
         self.client = speech.SpeechClient()
         self.config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,

@@ -18,17 +18,49 @@ class BubbleDelegate(QStyledItemDelegate):
             painter.save()
             painter.setRenderHint(QPainter.Antialiasing, True)
             painter.setPen(Qt.NoPen)
-            painter.setBrush(QColor("#3daee9"))
+
+            # Set the color according to the sender
+            if text.startswith("User: "):
+                painter.setBrush(QColor("#3daee9"))
+            else:
+                painter.setBrush(QColor("#ee3d3d"))
+
             painter.drawRoundedRect(text_rect, 10, 10)
 
             painter.setPen(QColor("#2b2b2b"))
-            painter.drawText(text_rect, Qt.AlignCenter, text)
+
+            # Add padding to the text
+            text = "  " + text + "  "
+            text_rect = painter.boundingRect(text_rect, Qt.AlignLeft | Qt.TextWordWrap, text)
+
+            painter.drawText(text_rect, Qt.AlignLeft | Qt.TextWordWrap, text)
 
             painter.restore()
 
     def sizeHint(self, option, index):
-        return QSize(100, 30)
+        # get the text of the item
+        text = index.data(Qt.DisplayRole)
 
+        # get the font metrics of the text
+        fontMetrics = option.fontMetrics
+
+        # calculate a reasonable width for word-wrapping
+        wrapWidth = option.rect.width() - 20  # 10 pixel padding on each side
+
+        # calculate the bounding rect of the text if it is word-wrapped
+        boundingRect = fontMetrics.boundingRect(0, 0, wrapWidth, 10000, Qt.AlignLeft | Qt.TextWordWrap, text)
+
+        # calculate the number of lines in the text
+        lines = text.split('\n')
+        numLines = 0
+        for line in lines:
+            numLines += (fontMetrics.horizontalAdvance(line) // wrapWidth) + 1
+
+        # calculate the height of the bounding rectangle based on the number of lines
+        lineHeight = fontMetrics.height()
+        boundingRect.setHeight(numLines * lineHeight + 10)  # add padding
+
+        return boundingRect.size()
 
 class JarvisWidget(QFrame):
     def __init__(self, parent=None):
@@ -38,11 +70,16 @@ class JarvisWidget(QFrame):
         self.search_button = QPushButton("Search", self)
         self.search_button.clicked.connect(self.process_query)
         self.chat_list_view = QListView(self)
+        self.chat_list_view.setWordWrap(True)
         self.chat_list_model = QStandardItemModel(self.chat_list_view)
         self.chat_list_view.setModel(self.chat_list_model)
         self.chat_list_view.setItemDelegate(BubbleDelegate())
 
+
         self.web_search_checkbox = QCheckBox("Force web search", self)
+        self.web_search_checkbox.setStyleSheet("background-color: #31363b; border-radius: 15px;")
+
+
 
         self.chat_layout = QVBoxLayout()
         self.setLayout(self.chat_layout)
