@@ -30,7 +30,6 @@ def main():
     # Run the GUI event loop
     sys.exit(app.exec_())
 
-
 if __name__ == "__main__":
     # Clean up audio files before starting
     delete_audio_files()

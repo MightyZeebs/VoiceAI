@@ -133,6 +133,7 @@ class VoiceAssistant:
                                     self.app.root.reset_chat()
 
                                 elif transcript.strip().lower():
+                                    self.jarvis_widget.display_message("User: " + transcript)
                                     self.handle_transcript(transcript)
 
                 except StopIteration:
@@ -181,11 +182,7 @@ class VoiceAssistant:
         self.is_speaking = False
 
         conversation_history.append((Current_time, "assistant: " + answer))
-        user_item = QStandardItem("User: " + transcript)
-        assistant_item = QStandardItem("Assistant: " + answer)
-        self.jarvis_widget.chat_list_model.appendRow(user_item)
-        self.jarvis_widget.chat_list_model.appendRow(assistant_item)
-        self.jarvis_widget.chat_list_view.scrollToBottom()
+        self.jarvis_widget.display_message("Assistant: " + answer) # Emit signal to display assistant response
         return answer
 
     def set_deactivation_keyword(keyword):
